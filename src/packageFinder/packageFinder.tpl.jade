@@ -6,30 +6,47 @@ md-content(layout="column").package-finder
 		.add-package
 			h4 Add Package
 				small.subhead
-					| I like
+					| i like
 					|  
 					a(href="https://rawgit.com/", target="_blank") rawgit
 					|  
 					| to host libs
+			md-input-container.md-block
+				label url to library
+				input(
+					name="new.path",
+					ng-change="packageFinder.updatePath()",
+					ng-model="packageFinder.new.path",
+					required
+				)
 			div(layout="row")
 				md-input-container.md-block
-					label url
-					input(name="packagePath", data-ng-model="packageFinder.newPath")
-				md-input-container.md-block
 					label name
-					input(name="packageName", data-ng-model="packageFinder.newName")
+					input(
+						name="new.name",
+						ng-change="packageFinder.updateName()",
+						ng-model="packageFinder.new.name",
+						required
+						)
+				md-input-container.md-block
+					label alias
+					input(
+						name="new.alias",
+						ng-model="packageFinder.new.alias"
+					)
 				div
-					md-button(data-ng-click="packageFinder.addLib()").md-raised Add
+					md-button(ng-click="packageFinder.addLib()").md-raised Add
 		.package-list
 			h4 Packages
 			div(
 				layout,
-				data-ng-repeat="pkg in packageFinder.state.packages"
+				ng-repeat="item in packageFinder.packages"
 			)
 				md-checkbox(
 					aria-label="Enable Package",
-					ng-model="pkg.on",
-					ng-change="packageFinder.toggleLib(pkg)"
+					ng-model="item.isEnabled",
+					ng-change="packageFinder.toggleLib(item)"
 				)
-				p {{ pkg.name }}
-					small.subhead {{ pkg.path }}
+				p {{ item.name }}
+					small(ng-if="item.alias && item.name !== item.alias").subhead as ({{ item.alias }})
+					small.subhead {{ item.path }}
