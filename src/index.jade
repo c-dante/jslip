@@ -3,9 +3,10 @@ html(lang="en")
 	head
 		meta(charset="UTF-8")
 		meta(name="viewport", content="width=device-width, initial-scale=1")
-		meta(name="description", content="")
+		meta(name="description", content="Easy way to load a bunch of js libraries into the console for testing and play.")
 
-		title Hello World
+		title js lib playground
 
 		script(src="./main.bundle.js", type="text/javascript", async, defer)
-	body
+	body(data-ng-app="jslip", ng-cloak)
+		div(data-ng-view)
