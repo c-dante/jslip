@@ -1,5 +1,6 @@
 'use strict'
 
+var ContextReplacementPlugin = require('webpack/lib/ContextReplacementPlugin');
 var autoprefixer = require('autoprefixer');
 var path = require('path');
 
@@ -15,8 +16,14 @@ module.exports = {
 	},
 	debug: true,
 	devtool: 'cheap-source-map',
+	resolve: {
+		alias: {
+			fs: 'html5-fs',
+			systemjs: 'systemjs/dist/system'
+		}
+	},
 	resolveLoader: {
-		root: process.cwd() + '/node_modules/'
+		root: path.resolve(process.cwd(), 'node_modules')
 	},
 	module: {
 		loaders: [
@@ -29,6 +36,9 @@ module.exports = {
 	postcss: () => {
 		return [autoprefixer];
 	},
+	plugins: [
+		new ContextReplacementPlugin(/systemjs/, /systemjs\/dist\/systemjs\.js$/)
+	],
 	devServer: {
 		publicPath: '/',
 		outputPath: '/',

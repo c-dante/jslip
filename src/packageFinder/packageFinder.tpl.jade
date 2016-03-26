@@ -27,6 +27,7 @@ md-content(layout="column").package-finder
 				data-ng-repeat="pkg in packageFinder.state.packages"
 			)
 				md-checkbox(
+					aria-label="Enable Package",
 					ng-model="pkg.on",
 					ng-change="packageFinder.toggleLib(pkg)"
 				)
