@@ -1,0 +1,23 @@
+.package-finder {
+	.subhead {
+		margin-left: 0.25em;
+		color: grey;
+		font-size: 0.75em;
+	}
+
+	.add-package {
+		& > h4 {
+			margin-bottom: 0.25em;
+		}
+	}
+
+	.package-list {
+		md-checkbox + p {
+			display: inline-block;
+			transform: translate(0, -0.35em);
+			.subhead {
+				text-overflow: ellipsis;
+			}
+		}
+	}
+}

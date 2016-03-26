@@ -10,9 +10,8 @@ var mainState = require('./state');
 
 var jslip = angular.module('jslip', ['ngMaterial', 'ngRoute']);
 
-jslip.controller('packageFinder', ['mainState', require('./packageFinder/ctrl')]);
+jslip.controller('packageFinder', ['$scope', 'mainState', require('./packageFinder/ctrl')]);
 var packageFinderTpl = require('./packageFinder/packageFinder.tpl.jade');
-console.log(packageFinderTpl);
 
 jslip.config(['$routeProvider', (routes) => {
 
@@ -25,5 +24,5 @@ jslip.config(['$routeProvider', (routes) => {
 		}
 	});
 
-	// routes.otherwise('/');
+	routes.otherwise('/');
 }]);

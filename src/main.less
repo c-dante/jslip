@@ -20,6 +20,18 @@ p {
 	line-height: 1;
 }
 
+a {
+	text-decoration: none;
+	&:visited {
+		color: darken(blue, 10%);
+	}
+	&:active {
+		color: lighten(blue, 15%);
+	}
+	&:hover {
+		color: lighten(blue, 10%);
+	}
+}
 
 
 
