@@ -58,7 +58,7 @@ md-content(layout, layout-fill)
 				h4 Packages
 				div(
 					layout,
-					ng-repeat="item in packageFinder.packages"
+					ng-repeat="item in packageFinder.packages track by item.name"
 				)
 					md-checkbox(
 						aria-label="Enable Package",
