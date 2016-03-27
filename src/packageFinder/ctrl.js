@@ -3,6 +3,7 @@
 require('./style.less');
 
 var _ = require('lodash');
+var search = require('../search');
 
 var newPkg = () => {
 	return {
@@ -24,6 +25,19 @@ var PackageFinder = function(scope, state){
 
 	state.subscribe(() => update);
 	update();
+};
+
+var throttleSearch = _.throttle(search.autocomplete, 250);
+
+PackageFinder.prototype.search = function(name){
+	return throttleSearch(name);
+};
+
+PackageFinder.prototype.pickPackage = function(pkg){
+	this.new.name = this.selectedPackage.name + ' ' + this.selectedPackage.version;
+	this.new.alias = this.selectedPackage.alias || this.selectedPackage.name;
+	this.new.path = this.selectedPackage.path;
+	this.shouldGen = false;
 };
 
 PackageFinder.prototype.updateName = function(){

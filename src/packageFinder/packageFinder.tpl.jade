@@ -11,15 +11,29 @@ md-content(layout="column").package-finder
 					a(href="https://rawgit.com/", target="_blank") rawgit
 					|  
 					| to host libs
-			md-input-container.md-block
-				label url to library
-				input(
-					name="new.path",
-					ng-change="packageFinder.updatePath()",
-					ng-model="packageFinder.new.path",
-					required
+			
+			.find-package
+				md-autocomplete(
+					md-selected-item="packageFinder.selectedPackage",
+					md-search-text="packageFinder.searchText",
+					md-items="item in packageFinder.search(packageFinder.searchText)",
+					md-selected-item-change="packageFinder.pickPackage(item)",
+					md-item-text="item.name",
+					md-floating-label="Search for cdnjs packages..."
 				)
+					md-item-template
+						span(ng-bind-html="item._highlightResult.name.value").package
+					md-not-found
+						span No results found
 			div(layout="row")
+				md-input-container.md-block
+					label url to library
+					input(
+						name="new.path",
+						ng-change="packageFinder.updatePath()",
+						ng-model="packageFinder.new.path",
+						required
+					)
 				md-input-container.md-block
 					label name
 					input(
@@ -28,7 +42,7 @@ md-content(layout="column").package-finder
 						ng-model="packageFinder.new.name",
 						required
 						)
-				md-input-container.md-block
+				md-input-container.md-block.flex-15
 					label alias
 					input(
 						name="new.alias",
