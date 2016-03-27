@@ -65,13 +65,14 @@
 	var angular = __webpack_require__(8);
 	__webpack_require__(10);
 	__webpack_require__(16);
+	__webpack_require__(18);
 
-	var mainState = __webpack_require__(18);
+	var mainState = __webpack_require__(20);
 
-	var jslip = angular.module('jslip', ['ngMaterial', 'ngRoute']);
+	var jslip = angular.module('jslip', ['ngMaterial', 'ngRoute', 'ngSanitize']);
 
-	jslip.controller('packageFinder', ['$scope', 'mainState', __webpack_require__(36)]);
-	var packageFinderTpl = __webpack_require__(41);
+	jslip.controller('packageFinder', ['$scope', 'mainState', '$mdSidenav', __webpack_require__(38)]);
+	var packageFinderTpl = __webpack_require__(87);
 
 	jslip.config(['$routeProvider', routes => {
 
@@ -61329,9 +61330,740 @@
 /* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
+	__webpack_require__(19);
+	module.exports = 'ngSanitize';
+
+
+/***/ },
+/* 19 */
+/***/ function(module, exports) {
+
+	/**
+	 * @license AngularJS v1.5.3
+	 * (c) 2010-2016 Google, Inc. http://angularjs.org
+	 * License: MIT
+	 */
+	(function(window, angular, undefined) {'use strict';
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *     Any commits to this file should be reviewed with security in mind.  *
+	 *   Changes to this file can potentially create security vulnerabilities. *
+	 *          An approval from 2 Core members with history of modifying      *
+	 *                         this file is required.                          *
+	 *                                                                         *
+	 *  Does the change somehow allow for arbitrary javascript to be executed? *
+	 *    Or allows for someone to change the prototype of built-in objects?   *
+	 *     Or gives undesired access to variables likes document or window?    *
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+	var $sanitizeMinErr = angular.$$minErr('$sanitize');
+
+	/**
+	 * @ngdoc module
+	 * @name ngSanitize
+	 * @description
+	 *
+	 * # ngSanitize
+	 *
+	 * The `ngSanitize` module provides functionality to sanitize HTML.
+	 *
+	 *
+	 * <div doc-module-components="ngSanitize"></div>
+	 *
+	 * See {@link ngSanitize.$sanitize `$sanitize`} for usage.
+	 */
+
+	/**
+	 * @ngdoc service
+	 * @name $sanitize
+	 * @kind function
+	 *
+	 * @description
+	 *   Sanitizes an html string by stripping all potentially dangerous tokens.
+	 *
+	 *   The input is sanitized by parsing the HTML into tokens. All safe tokens (from a whitelist) are
+	 *   then serialized back to properly escaped html string. This means that no unsafe input can make
+	 *   it into the returned string.
+	 *
+	 *   The whitelist for URL sanitization of attribute values is configured using the functions
+	 *   `aHrefSanitizationWhitelist` and `imgSrcSanitizationWhitelist` of {@link ng.$compileProvider
+	 *   `$compileProvider`}.
+	 *
+	 *   The input may also contain SVG markup if this is enabled via {@link $sanitizeProvider}.
+	 *
+	 * @param {string} html HTML input.
+	 * @returns {string} Sanitized HTML.
+	 *
+	 * @example
+	   <example module="sanitizeExample" deps="angular-sanitize.js">
+	   <file name="index.html">
+	     <script>
+	         angular.module('sanitizeExample', ['ngSanitize'])
+	           .controller('ExampleController', ['$scope', '$sce', function($scope, $sce) {
+	             $scope.snippet =
+	               '<p style="color:blue">an html\n' +
+	               '<em onmouseover="this.textContent=\'PWN3D!\'">click here</em>\n' +
+	               'snippet</p>';
+	             $scope.deliberatelyTrustDangerousSnippet = function() {
+	               return $sce.trustAsHtml($scope.snippet);
+	             };
+	           }]);
+	     </script>
+	     <div ng-controller="ExampleController">
+	        Snippet: <textarea ng-model="snippet" cols="60" rows="3"></textarea>
+	       <table>
+	         <tr>
+	           <td>Directive</td>
+	           <td>How</td>
+	           <td>Source</td>
+	           <td>Rendered</td>
+	         </tr>
+	         <tr id="bind-html-with-sanitize">
+	           <td>ng-bind-html</td>
+	           <td>Automatically uses $sanitize</td>
+	           <td><pre>&lt;div ng-bind-html="snippet"&gt;<br/>&lt;/div&gt;</pre></td>
+	           <td><div ng-bind-html="snippet"></div></td>
+	         </tr>
+	         <tr id="bind-html-with-trust">
+	           <td>ng-bind-html</td>
+	           <td>Bypass $sanitize by explicitly trusting the dangerous value</td>
+	           <td>
+	           <pre>&lt;div ng-bind-html="deliberatelyTrustDangerousSnippet()"&gt;
+	&lt;/div&gt;</pre>
+	           </td>
+	           <td><div ng-bind-html="deliberatelyTrustDangerousSnippet()"></div></td>
+	         </tr>
+	         <tr id="bind-default">
+	           <td>ng-bind</td>
+	           <td>Automatically escapes</td>
+	           <td><pre>&lt;div ng-bind="snippet"&gt;<br/>&lt;/div&gt;</pre></td>
+	           <td><div ng-bind="snippet"></div></td>
+	         </tr>
+	       </table>
+	       </div>
+	   </file>
+	   <file name="protractor.js" type="protractor">
+	     it('should sanitize the html snippet by default', function() {
+	       expect(element(by.css('#bind-html-with-sanitize div')).getInnerHtml()).
+	         toBe('<p>an html\n<em>click here</em>\nsnippet</p>');
+	     });
+
+	     it('should inline raw snippet if bound to a trusted value', function() {
+	       expect(element(by.css('#bind-html-with-trust div')).getInnerHtml()).
+	         toBe("<p style=\"color:blue\">an html\n" +
+	              "<em onmouseover=\"this.textContent='PWN3D!'\">click here</em>\n" +
+	              "snippet</p>");
+	     });
+
+	     it('should escape snippet without any filter', function() {
+	       expect(element(by.css('#bind-default div')).getInnerHtml()).
+	         toBe("&lt;p style=\"color:blue\"&gt;an html\n" +
+	              "&lt;em onmouseover=\"this.textContent='PWN3D!'\"&gt;click here&lt;/em&gt;\n" +
+	              "snippet&lt;/p&gt;");
+	     });
+
+	     it('should update', function() {
+	       element(by.model('snippet')).clear();
+	       element(by.model('snippet')).sendKeys('new <b onclick="alert(1)">text</b>');
+	       expect(element(by.css('#bind-html-with-sanitize div')).getInnerHtml()).
+	         toBe('new <b>text</b>');
+	       expect(element(by.css('#bind-html-with-trust div')).getInnerHtml()).toBe(
+	         'new <b onclick="alert(1)">text</b>');
+	       expect(element(by.css('#bind-default div')).getInnerHtml()).toBe(
+	         "new &lt;b onclick=\"alert(1)\"&gt;text&lt;/b&gt;");
+	     });
+	   </file>
+	   </example>
+	 */
+
+
+	/**
+	 * @ngdoc provider
+	 * @name $sanitizeProvider
+	 *
+	 * @description
+	 * Creates and configures {@link $sanitize} instance.
+	 */
+	function $SanitizeProvider() {
+	  var svgEnabled = false;
+
+	  this.$get = ['$$sanitizeUri', function($$sanitizeUri) {
+	    if (svgEnabled) {
+	      angular.extend(validElements, svgElements);
+	    }
+	    return function(html) {
+	      var buf = [];
+	      htmlParser(html, htmlSanitizeWriter(buf, function(uri, isImage) {
+	        return !/^unsafe:/.test($$sanitizeUri(uri, isImage));
+	      }));
+	      return buf.join('');
+	    };
+	  }];
+
+
+	  /**
+	   * @ngdoc method
+	   * @name $sanitizeProvider#enableSvg
+	   * @kind function
+	   *
+	   * @description
+	   * Enables a subset of svg to be supported by the sanitizer.
+	   *
+	   * <div class="alert alert-warning">
+	   *   <p>By enabling this setting without taking other precautions, you might expose your
+	   *   application to click-hijacking attacks. In these attacks, sanitized svg elements could be positioned
+	   *   outside of the containing element and be rendered over other elements on the page (e.g. a login
+	   *   link). Such behavior can then result in phishing incidents.</p>
+	   *
+	   *   <p>To protect against these, explicitly setup `overflow: hidden` css rule for all potential svg
+	   *   tags within the sanitized content:</p>
+	   *
+	   *   <br>
+	   *
+	   *   <pre><code>
+	   *   .rootOfTheIncludedContent svg {
+	   *     overflow: hidden !important;
+	   *   }
+	   *   </code></pre>
+	   * </div>
+	   *
+	   * @param {boolean=} regexp New regexp to whitelist urls with.
+	   * @returns {boolean|ng.$sanitizeProvider} Returns the currently configured value if called
+	   *    without an argument or self for chaining otherwise.
+	   */
+	  this.enableSvg = function(enableSvg) {
+	    if (angular.isDefined(enableSvg)) {
+	      svgEnabled = enableSvg;
+	      return this;
+	    } else {
+	      return svgEnabled;
+	    }
+	  };
+	}
+
+	function sanitizeText(chars) {
+	  var buf = [];
+	  var writer = htmlSanitizeWriter(buf, angular.noop);
+	  writer.chars(chars);
+	  return buf.join('');
+	}
+
+
+	// Regular Expressions for parsing tags and attributes
+	var SURROGATE_PAIR_REGEXP = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g,
+	  // Match everything outside of normal chars and " (quote character)
+	  NON_ALPHANUMERIC_REGEXP = /([^\#-~ |!])/g;
+
+
+	// Good source of info about elements and attributes
+	// http://dev.w3.org/html5/spec/Overview.html#semantics
+	// http://simon.html5.org/html-elements
+
+	// Safe Void Elements - HTML5
+	// http://dev.w3.org/html5/spec/Overview.html#void-elements
+	var voidElements = toMap("area,br,col,hr,img,wbr");
+
+	// Elements that you can, intentionally, leave open (and which close themselves)
+	// http://dev.w3.org/html5/spec/Overview.html#optional-tags
+	var optionalEndTagBlockElements = toMap("colgroup,dd,dt,li,p,tbody,td,tfoot,th,thead,tr"),
+	    optionalEndTagInlineElements = toMap("rp,rt"),
+	    optionalEndTagElements = angular.extend({},
+	                                            optionalEndTagInlineElements,
+	                                            optionalEndTagBlockElements);
+
+	// Safe Block Elements - HTML5
+	var blockElements = angular.extend({}, optionalEndTagBlockElements, toMap("address,article," +
+	        "aside,blockquote,caption,center,del,dir,div,dl,figure,figcaption,footer,h1,h2,h3,h4,h5," +
+	        "h6,header,hgroup,hr,ins,map,menu,nav,ol,pre,section,table,ul"));
+
+	// Inline Elements - HTML5
+	var inlineElements = angular.extend({}, optionalEndTagInlineElements, toMap("a,abbr,acronym,b," +
+	        "bdi,bdo,big,br,cite,code,del,dfn,em,font,i,img,ins,kbd,label,map,mark,q,ruby,rp,rt,s," +
+	        "samp,small,span,strike,strong,sub,sup,time,tt,u,var"));
+
+	// SVG Elements
+	// https://wiki.whatwg.org/wiki/Sanitization_rules#svg_Elements
+	// Note: the elements animate,animateColor,animateMotion,animateTransform,set are intentionally omitted.
+	// They can potentially allow for arbitrary javascript to be executed. See #11290
+	var svgElements = toMap("circle,defs,desc,ellipse,font-face,font-face-name,font-face-src,g,glyph," +
+	        "hkern,image,linearGradient,line,marker,metadata,missing-glyph,mpath,path,polygon,polyline," +
+	        "radialGradient,rect,stop,svg,switch,text,title,tspan");
+
+	// Blocked Elements (will be stripped)
+	var blockedElements = toMap("script,style");
+
+	var validElements = angular.extend({},
+	                                   voidElements,
+	                                   blockElements,
+	                                   inlineElements,
+	                                   optionalEndTagElements);
+
+	//Attributes that have href and hence need to be sanitized
+	var uriAttrs = toMap("background,cite,href,longdesc,src,xlink:href");
+
+	var htmlAttrs = toMap('abbr,align,alt,axis,bgcolor,border,cellpadding,cellspacing,class,clear,' +
+	    'color,cols,colspan,compact,coords,dir,face,headers,height,hreflang,hspace,' +
+	    'ismap,lang,language,nohref,nowrap,rel,rev,rows,rowspan,rules,' +
+	    'scope,scrolling,shape,size,span,start,summary,tabindex,target,title,type,' +
+	    'valign,value,vspace,width');
+
+	// SVG attributes (without "id" and "name" attributes)
+	// https://wiki.whatwg.org/wiki/Sanitization_rules#svg_Attributes
+	var svgAttrs = toMap('accent-height,accumulate,additive,alphabetic,arabic-form,ascent,' +
+	    'baseProfile,bbox,begin,by,calcMode,cap-height,class,color,color-rendering,content,' +
+	    'cx,cy,d,dx,dy,descent,display,dur,end,fill,fill-rule,font-family,font-size,font-stretch,' +
+	    'font-style,font-variant,font-weight,from,fx,fy,g1,g2,glyph-name,gradientUnits,hanging,' +
+	    'height,horiz-adv-x,horiz-origin-x,ideographic,k,keyPoints,keySplines,keyTimes,lang,' +
+	    'marker-end,marker-mid,marker-start,markerHeight,markerUnits,markerWidth,mathematical,' +
+	    'max,min,offset,opacity,orient,origin,overline-position,overline-thickness,panose-1,' +
+	    'path,pathLength,points,preserveAspectRatio,r,refX,refY,repeatCount,repeatDur,' +
+	    'requiredExtensions,requiredFeatures,restart,rotate,rx,ry,slope,stemh,stemv,stop-color,' +
+	    'stop-opacity,strikethrough-position,strikethrough-thickness,stroke,stroke-dasharray,' +
+	    'stroke-dashoffset,stroke-linecap,stroke-linejoin,stroke-miterlimit,stroke-opacity,' +
+	    'stroke-width,systemLanguage,target,text-anchor,to,transform,type,u1,u2,underline-position,' +
+	    'underline-thickness,unicode,unicode-range,units-per-em,values,version,viewBox,visibility,' +
+	    'width,widths,x,x-height,x1,x2,xlink:actuate,xlink:arcrole,xlink:role,xlink:show,xlink:title,' +
+	    'xlink:type,xml:base,xml:lang,xml:space,xmlns,xmlns:xlink,y,y1,y2,zoomAndPan', true);
+
+	var validAttrs = angular.extend({},
+	                                uriAttrs,
+	                                svgAttrs,
+	                                htmlAttrs);
+
+	function toMap(str, lowercaseKeys) {
+	  var obj = {}, items = str.split(','), i;
+	  for (i = 0; i < items.length; i++) {
+	    obj[lowercaseKeys ? angular.lowercase(items[i]) : items[i]] = true;
+	  }
+	  return obj;
+	}
+
+	var inertBodyElement;
+	(function(window) {
+	  var doc;
+	  if (window.document && window.document.implementation) {
+	    doc = window.document.implementation.createHTMLDocument("inert");
+	  } else {
+	    throw $sanitizeMinErr('noinert', "Can't create an inert html document");
+	  }
+	  var docElement = doc.documentElement || doc.getDocumentElement();
+	  var bodyElements = docElement.getElementsByTagName('body');
+
+	  // usually there should be only one body element in the document, but IE doesn't have any, so we need to create one
+	  if (bodyElements.length === 1) {
+	    inertBodyElement = bodyElements[0];
+	  } else {
+	    var html = doc.createElement('html');
+	    inertBodyElement = doc.createElement('body');
+	    html.appendChild(inertBodyElement);
+	    doc.appendChild(html);
+	  }
+	})(window);
+
+	/**
+	 * @example
+	 * htmlParser(htmlString, {
+	 *     start: function(tag, attrs) {},
+	 *     end: function(tag) {},
+	 *     chars: function(text) {},
+	 *     comment: function(text) {}
+	 * });
+	 *
+	 * @param {string} html string
+	 * @param {object} handler
+	 */
+	function htmlParser(html, handler) {
+	  if (html === null || html === undefined) {
+	    html = '';
+	  } else if (typeof html !== 'string') {
+	    html = '' + html;
+	  }
+	  inertBodyElement.innerHTML = html;
+
+	  //mXSS protection
+	  var mXSSAttempts = 5;
+	  do {
+	    if (mXSSAttempts === 0) {
+	      throw $sanitizeMinErr('uinput', "Failed to sanitize html because the input is unstable");
+	    }
+	    mXSSAttempts--;
+
+	    // strip custom-namespaced attributes on IE<=11
+	    if (document.documentMode <= 11) {
+	      stripCustomNsAttrs(inertBodyElement);
+	    }
+	    html = inertBodyElement.innerHTML; //trigger mXSS
+	    inertBodyElement.innerHTML = html;
+	  } while (html !== inertBodyElement.innerHTML);
+
+	  var node = inertBodyElement.firstChild;
+	  while (node) {
+	    switch (node.nodeType) {
+	      case 1: // ELEMENT_NODE
+	        handler.start(node.nodeName.toLowerCase(), attrToMap(node.attributes));
+	        break;
+	      case 3: // TEXT NODE
+	        handler.chars(node.textContent);
+	        break;
+	    }
+
+	    var nextNode;
+	    if (!(nextNode = node.firstChild)) {
+	      if (node.nodeType == 1) {
+	        handler.end(node.nodeName.toLowerCase());
+	      }
+	      nextNode = node.nextSibling;
+	      if (!nextNode) {
+	        while (nextNode == null) {
+	          node = node.parentNode;
+	          if (node === inertBodyElement) break;
+	          nextNode = node.nextSibling;
+	          if (node.nodeType == 1) {
+	            handler.end(node.nodeName.toLowerCase());
+	          }
+	        }
+	      }
+	    }
+	    node = nextNode;
+	  }
+
+	  while (node = inertBodyElement.firstChild) {
+	    inertBodyElement.removeChild(node);
+	  }
+	}
+
+	function attrToMap(attrs) {
+	  var map = {};
+	  for (var i = 0, ii = attrs.length; i < ii; i++) {
+	    var attr = attrs[i];
+	    map[attr.name] = attr.value;
+	  }
+	  return map;
+	}
+
+
+	/**
+	 * Escapes all potentially dangerous characters, so that the
+	 * resulting string can be safely inserted into attribute or
+	 * element text.
+	 * @param value
+	 * @returns {string} escaped text
+	 */
+	function encodeEntities(value) {
+	  return value.
+	    replace(/&/g, '&amp;').
+	    replace(SURROGATE_PAIR_REGEXP, function(value) {
+	      var hi = value.charCodeAt(0);
+	      var low = value.charCodeAt(1);
+	      return '&#' + (((hi - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000) + ';';
+	    }).
+	    replace(NON_ALPHANUMERIC_REGEXP, function(value) {
+	      return '&#' + value.charCodeAt(0) + ';';
+	    }).
+	    replace(/</g, '&lt;').
+	    replace(/>/g, '&gt;');
+	}
+
+	/**
+	 * create an HTML/XML writer which writes to buffer
+	 * @param {Array} buf use buf.join('') to get out sanitized html string
+	 * @returns {object} in the form of {
+	 *     start: function(tag, attrs) {},
+	 *     end: function(tag) {},
+	 *     chars: function(text) {},
+	 *     comment: function(text) {}
+	 * }
+	 */
+	function htmlSanitizeWriter(buf, uriValidator) {
+	  var ignoreCurrentElement = false;
+	  var out = angular.bind(buf, buf.push);
+	  return {
+	    start: function(tag, attrs) {
+	      tag = angular.lowercase(tag);
+	      if (!ignoreCurrentElement && blockedElements[tag]) {
+	        ignoreCurrentElement = tag;
+	      }
+	      if (!ignoreCurrentElement && validElements[tag] === true) {
+	        out('<');
+	        out(tag);
+	        angular.forEach(attrs, function(value, key) {
+	          var lkey=angular.lowercase(key);
+	          var isImage = (tag === 'img' && lkey === 'src') || (lkey === 'background');
+	          if (validAttrs[lkey] === true &&
+	            (uriAttrs[lkey] !== true || uriValidator(value, isImage))) {
+	            out(' ');
+	            out(key);
+	            out('="');
+	            out(encodeEntities(value));
+	            out('"');
+	          }
+	        });
+	        out('>');
+	      }
+	    },
+	    end: function(tag) {
+	      tag = angular.lowercase(tag);
+	      if (!ignoreCurrentElement && validElements[tag] === true && voidElements[tag] !== true) {
+	        out('</');
+	        out(tag);
+	        out('>');
+	      }
+	      if (tag == ignoreCurrentElement) {
+	        ignoreCurrentElement = false;
+	      }
+	    },
+	    chars: function(chars) {
+	      if (!ignoreCurrentElement) {
+	        out(encodeEntities(chars));
+	      }
+	    }
+	  };
+	}
+
+
+	/**
+	 * When IE9-11 comes across an unknown namespaced attribute e.g. 'xlink:foo' it adds 'xmlns:ns1' attribute to declare
+	 * ns1 namespace and prefixes the attribute with 'ns1' (e.g. 'ns1:xlink:foo'). This is undesirable since we don't want
+	 * to allow any of these custom attributes. This method strips them all.
+	 *
+	 * @param node Root element to process
+	 */
+	function stripCustomNsAttrs(node) {
+	  if (node.nodeType === Node.ELEMENT_NODE) {
+	    var attrs = node.attributes;
+	    for (var i = 0, l = attrs.length; i < l; i++) {
+	      var attrNode = attrs[i];
+	      var attrName = attrNode.name.toLowerCase();
+	      if (attrName === 'xmlns:ns1' || attrName.indexOf('ns1:') === 0) {
+	        node.removeAttributeNode(attrNode);
+	        i--;
+	        l--;
+	      }
+	    }
+	  }
+
+	  var nextNode = node.firstChild;
+	  if (nextNode) {
+	    stripCustomNsAttrs(nextNode);
+	  }
+
+	  nextNode = node.nextSibling;
+	  if (nextNode) {
+	    stripCustomNsAttrs(nextNode);
+	  }
+	}
+
+
+
+	// define ngSanitize module and register $sanitize service
+	angular.module('ngSanitize', []).provider('$sanitize', $SanitizeProvider);
+
+	/* global sanitizeText: false */
+
+	/**
+	 * @ngdoc filter
+	 * @name linky
+	 * @kind function
+	 *
+	 * @description
+	 * Finds links in text input and turns them into html links. Supports `http/https/ftp/mailto` and
+	 * plain email address links.
+	 *
+	 * Requires the {@link ngSanitize `ngSanitize`} module to be installed.
+	 *
+	 * @param {string} text Input text.
+	 * @param {string} target Window (`_blank|_self|_parent|_top`) or named frame to open links in.
+	 * @param {object|function(url)} [attributes] Add custom attributes to the link element.
+	 *
+	 *    Can be one of:
+	 *
+	 *    - `object`: A map of attributes
+	 *    - `function`: Takes the url as a parameter and returns a map of attributes
+	 *
+	 *    If the map of attributes contains a value for `target`, it overrides the value of
+	 *    the target parameter.
+	 *
+	 *
+	 * @returns {string} Html-linkified and {@link $sanitize sanitized} text.
+	 *
+	 * @usage
+	   <span ng-bind-html="linky_expression | linky"></span>
+	 *
+	 * @example
+	   <example module="linkyExample" deps="angular-sanitize.js">
+	     <file name="index.html">
+	       <div ng-controller="ExampleController">
+	       Snippet: <textarea ng-model="snippet" cols="60" rows="3"></textarea>
+	       <table>
+	         <tr>
+	           <th>Filter</th>
+	           <th>Source</th>
+	           <th>Rendered</th>
+	         </tr>
+	         <tr id="linky-filter">
+	           <td>linky filter</td>
+	           <td>
+	             <pre>&lt;div ng-bind-html="snippet | linky"&gt;<br>&lt;/div&gt;</pre>
+	           </td>
+	           <td>
+	             <div ng-bind-html="snippet | linky"></div>
+	           </td>
+	         </tr>
+	         <tr id="linky-target">
+	          <td>linky target</td>
+	          <td>
+	            <pre>&lt;div ng-bind-html="snippetWithSingleURL | linky:'_blank'"&gt;<br>&lt;/div&gt;</pre>
+	          </td>
+	          <td>
+	            <div ng-bind-html="snippetWithSingleURL | linky:'_blank'"></div>
+	          </td>
+	         </tr>
+	         <tr id="linky-custom-attributes">
+	          <td>linky custom attributes</td>
+	          <td>
+	            <pre>&lt;div ng-bind-html="snippetWithSingleURL | linky:'_self':{rel: 'nofollow'}"&gt;<br>&lt;/div&gt;</pre>
+	          </td>
+	          <td>
+	            <div ng-bind-html="snippetWithSingleURL | linky:'_self':{rel: 'nofollow'}"></div>
+	          </td>
+	         </tr>
+	         <tr id="escaped-html">
+	           <td>no filter</td>
+	           <td><pre>&lt;div ng-bind="snippet"&gt;<br>&lt;/div&gt;</pre></td>
+	           <td><div ng-bind="snippet"></div></td>
+	         </tr>
+	       </table>
+	     </file>
+	     <file name="script.js">
+	       angular.module('linkyExample', ['ngSanitize'])
+	         .controller('ExampleController', ['$scope', function($scope) {
+	           $scope.snippet =
+	             'Pretty text with some links:\n'+
+	             'http://angularjs.org/,\n'+
+	             'mailto:us@somewhere.org,\n'+
+	             'another@somewhere.org,\n'+
+	             'and one more: ftp://127.0.0.1/.';
+	           $scope.snippetWithSingleURL = 'http://angularjs.org/';
+	         }]);
+	     </file>
+	     <file name="protractor.js" type="protractor">
+	       it('should linkify the snippet with urls', function() {
+	         expect(element(by.id('linky-filter')).element(by.binding('snippet | linky')).getText()).
+	             toBe('Pretty text with some links: http://angularjs.org/, us@somewhere.org, ' +
+	                  'another@somewhere.org, and one more: ftp://127.0.0.1/.');
+	         expect(element.all(by.css('#linky-filter a')).count()).toEqual(4);
+	       });
+
+	       it('should not linkify snippet without the linky filter', function() {
+	         expect(element(by.id('escaped-html')).element(by.binding('snippet')).getText()).
+	             toBe('Pretty text with some links: http://angularjs.org/, mailto:us@somewhere.org, ' +
+	                  'another@somewhere.org, and one more: ftp://127.0.0.1/.');
+	         expect(element.all(by.css('#escaped-html a')).count()).toEqual(0);
+	       });
+
+	       it('should update', function() {
+	         element(by.model('snippet')).clear();
+	         element(by.model('snippet')).sendKeys('new http://link.');
+	         expect(element(by.id('linky-filter')).element(by.binding('snippet | linky')).getText()).
+	             toBe('new http://link.');
+	         expect(element.all(by.css('#linky-filter a')).count()).toEqual(1);
+	         expect(element(by.id('escaped-html')).element(by.binding('snippet')).getText())
+	             .toBe('new http://link.');
+	       });
+
+	       it('should work with the target property', function() {
+	        expect(element(by.id('linky-target')).
+	            element(by.binding("snippetWithSingleURL | linky:'_blank'")).getText()).
+	            toBe('http://angularjs.org/');
+	        expect(element(by.css('#linky-target a')).getAttribute('target')).toEqual('_blank');
+	       });
+
+	       it('should optionally add custom attributes', function() {
+	        expect(element(by.id('linky-custom-attributes')).
+	            element(by.binding("snippetWithSingleURL | linky:'_self':{rel: 'nofollow'}")).getText()).
+	            toBe('http://angularjs.org/');
+	        expect(element(by.css('#linky-custom-attributes a')).getAttribute('rel')).toEqual('nofollow');
+	       });
+	     </file>
+	   </example>
+	 */
+	angular.module('ngSanitize').filter('linky', ['$sanitize', function($sanitize) {
+	  var LINKY_URL_REGEXP =
+	        /((ftp|https?):\/\/|(www\.)|(mailto:)?[A-Za-z0-9._%+-]+@)\S*[^\s.;,(){}<>"\u201d\u2019]/i,
+	      MAILTO_REGEXP = /^mailto:/i;
+
+	  var linkyMinErr = angular.$$minErr('linky');
+	  var isString = angular.isString;
+
+	  return function(text, target, attributes) {
+	    if (text == null || text === '') return text;
+	    if (!isString(text)) throw linkyMinErr('notstring', 'Expected string but received: {0}', text);
+
+	    var match;
+	    var raw = text;
+	    var html = [];
+	    var url;
+	    var i;
+	    while ((match = raw.match(LINKY_URL_REGEXP))) {
+	      // We can not end in these as they are sometimes found at the end of the sentence
+	      url = match[0];
+	      // if we did not match ftp/http/www/mailto then assume mailto
+	      if (!match[2] && !match[4]) {
+	        url = (match[3] ? 'http://' : 'mailto:') + url;
+	      }
+	      i = match.index;
+	      addText(raw.substr(0, i));
+	      addLink(url, match[0].replace(MAILTO_REGEXP, ''));
+	      raw = raw.substring(i + match[0].length);
+	    }
+	    addText(raw);
+	    return $sanitize(html.join(''));
+
+	    function addText(text) {
+	      if (!text) {
+	        return;
+	      }
+	      html.push(sanitizeText(text));
+	    }
+
+	    function addLink(url, text) {
+	      var key;
+	      html.push('<a ');
+	      if (angular.isFunction(attributes)) {
+	        attributes = attributes(url);
+	      }
+	      if (angular.isObject(attributes)) {
+	        for (key in attributes) {
+	          html.push(key + '="' + attributes[key] + '" ');
+	        }
+	      } else {
+	        attributes = {};
+	      }
+	      if (angular.isDefined(target) && !('target' in attributes)) {
+	        html.push('target="',
+	                  target,
+	                  '" ');
+	      }
+	      html.push('href="',
+	                url.replace(/"/g, '&quot;'),
+	                '">');
+	      addText(text);
+	      html.push('</a>');
+	    }
+	  };
+	}]);
+
+
+	})(window, window.angular);
+
+
+/***/ },
+/* 20 */
+/***/ function(module, exports, __webpack_require__) {
+
 	'use strict';
 
-	var Redux = __webpack_require__(19);
+	var Redux = __webpack_require__(21);
 
 	// Base state
 	var pkg = (name, path, alias = undefined, isUser = false) => {
@@ -61359,7 +62091,7 @@
 		packageList: packages
 	});
 
-	var System = __webpack_require__(30);
+	var System = __webpack_require__(32);
 
 	var cache = {};
 	state.subscribe(() => {
@@ -61386,7 +62118,7 @@
 	module.exports = state;
 
 /***/ },
-/* 19 */
+/* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
@@ -61394,27 +62126,27 @@
 	exports.__esModule = true;
 	exports.compose = exports.applyMiddleware = exports.bindActionCreators = exports.combineReducers = exports.createStore = undefined;
 
-	var _createStore = __webpack_require__(21);
+	var _createStore = __webpack_require__(23);
 
 	var _createStore2 = _interopRequireDefault(_createStore);
 
-	var _combineReducers = __webpack_require__(25);
+	var _combineReducers = __webpack_require__(27);
 
 	var _combineReducers2 = _interopRequireDefault(_combineReducers);
 
-	var _bindActionCreators = __webpack_require__(27);
+	var _bindActionCreators = __webpack_require__(29);
 
 	var _bindActionCreators2 = _interopRequireDefault(_bindActionCreators);
 
-	var _applyMiddleware = __webpack_require__(28);
+	var _applyMiddleware = __webpack_require__(30);
 
 	var _applyMiddleware2 = _interopRequireDefault(_applyMiddleware);
 
-	var _compose = __webpack_require__(29);
+	var _compose = __webpack_require__(31);
 
 	var _compose2 = _interopRequireDefault(_compose);
 
-	var _warning = __webpack_require__(26);
+	var _warning = __webpack_require__(28);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
@@ -61435,10 +62167,10 @@
 	exports.bindActionCreators = _bindActionCreators2["default"];
 	exports.applyMiddleware = _applyMiddleware2["default"];
 	exports.compose = _compose2["default"];
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
 
 /***/ },
-/* 20 */
+/* 22 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -61535,7 +62267,7 @@
 
 
 /***/ },
-/* 21 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -61544,7 +62276,7 @@
 	exports.ActionTypes = undefined;
 	exports["default"] = createStore;
 
-	var _isPlainObject = __webpack_require__(22);
+	var _isPlainObject = __webpack_require__(24);
 
 	var _isPlainObject2 = _interopRequireDefault(_isPlainObject);
 
@@ -61756,11 +62488,11 @@
 	}
 
 /***/ },
-/* 22 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isHostObject = __webpack_require__(23),
-	    isObjectLike = __webpack_require__(24);
+	var isHostObject = __webpack_require__(25),
+	    isObjectLike = __webpack_require__(26);
 
 	/** `Object#toString` result references. */
 	var objectTag = '[object Object]';
@@ -61828,7 +62560,7 @@
 
 
 /***/ },
-/* 23 */
+/* 25 */
 /***/ function(module, exports) {
 
 	/**
@@ -61854,7 +62586,7 @@
 
 
 /***/ },
-/* 24 */
+/* 26 */
 /***/ function(module, exports) {
 
 	/**
@@ -61888,7 +62620,7 @@
 
 
 /***/ },
-/* 25 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
@@ -61896,13 +62628,13 @@
 	exports.__esModule = true;
 	exports["default"] = combineReducers;
 
-	var _createStore = __webpack_require__(21);
+	var _createStore = __webpack_require__(23);
 
-	var _isPlainObject = __webpack_require__(22);
+	var _isPlainObject = __webpack_require__(24);
 
 	var _isPlainObject2 = _interopRequireDefault(_isPlainObject);
 
-	var _warning = __webpack_require__(26);
+	var _warning = __webpack_require__(28);
 
 	var _warning2 = _interopRequireDefault(_warning);
 
@@ -62018,10 +62750,10 @@
 	    return hasChanged ? nextState : state;
 	  };
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
 
 /***/ },
-/* 26 */
+/* 28 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -62050,7 +62782,7 @@
 	}
 
 /***/ },
-/* 27 */
+/* 29 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -62106,7 +62838,7 @@
 	}
 
 /***/ },
-/* 28 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -62116,7 +62848,7 @@
 	exports.__esModule = true;
 	exports["default"] = applyMiddleware;
 
-	var _compose = __webpack_require__(29);
+	var _compose = __webpack_require__(31);
 
 	var _compose2 = _interopRequireDefault(_compose);
 
@@ -62168,7 +62900,7 @@
 	}
 
 /***/ },
-/* 29 */
+/* 31 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -62202,27 +62934,27 @@
 	}
 
 /***/ },
-/* 30 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process, __filename) {/*
 	 * SystemJS v0.19.24
 	 */
-	!function(){function e(){!function(e){function t(e,t){if(!e.originalErr)for(var n=(e.stack||e.message||e).split("\n"),r=[],a=0;a<n.length;a++)("undefined"==typeof $__curScript||-1==n[a].indexOf($__curScript.src))&&r.push(n[a]);var o=(r?r.join("\n	"):e.message)+"\n	"+t;L||(o=o.replace(A?/file:\/\/\//g:/file:\/\//g,""));var i=new Error(o,e.fileName,e.lineNumber);return L?i.stack=null:i.stack=o,i.originalErr=e.originalErr||e,i}function n(e,n,r){try{new Function(e).call(r)}catch(a){throw t(a,"Evaluating "+n)}}function r(){}function a(t){this._loader={loaderObj:this,loads:[],modules:{},importPromises:{},moduleRecords:{}},F(this,"global",{get:function(){return e}})}function o(){a.call(this),this.paths={}}function i(e,t){var n,r="",a=0;for(var o in e){var i=o.split("*");if(i.length>2)throw new TypeError("Only one wildcard in a path is permitted");if(1==i.length){if(t==o)return e[o];if(t.substr(0,o.length-1)==o.substr(0,o.length-1)&&(t.length<o.length||t[o.length-1]==o[o.length-1])&&"/"==e[o][e[o].length-1])return e[o].substr(0,e[o].length-1)+(t.length>o.length?"/"+t.substr(o.length):"")}else{var s=i[0].length;s>=a&&t.substr(0,i[0].length)==i[0]&&t.substr(t.length-i[1].length)==i[1]&&(a=s,r=o,n=t.substr(i[0].length,t.length-i[1].length-i[0].length))}}var l=e[r];return"string"==typeof n&&(l=l.replace("*",n)),l}function s(){}function l(){o.call(this),H.call(this)}function u(){}function d(e,t){l.prototype[e]=t(l.prototype[e]||function(){})}function c(e){H=e(H||function(){})}function f(e){for(var t=[],n=[],r=0,a=e.length;a>r;r++){var o=D.call(t,e[r]);-1===o?(t.push(e[r]),n.push([r])):n[o].push(r)}return{names:t,indices:n}}function m(e){var t={};if("object"==typeof e||"function"==typeof e)if(X){var n;for(var r in e)(n=Object.getOwnPropertyDescriptor(e,r))&&F(t,r,n)}else{var a=e&&e.hasOwnProperty;for(var r in e)(!a||e.hasOwnProperty(r))&&(t[r]=e[r])}return t["default"]=e,F(t,"__useDefault",{value:!0}),t}function p(e,t,n){for(var r in t)n&&r in e||(e[r]=t[r]);return e}function h(e,t,n){for(var r in t){var a=t[r];r in e?a instanceof Array&&e[r]instanceof Array?e[r]=[].concat(n?a:e[r]).concat(n?e[r]:a):"object"==typeof a&&null!==a&&"object"==typeof e[r]?e[r]=p(p({},e[r]),a,n):n||(e[r]=a):e[r]=a}}function g(e){this.warnings&&"undefined"!=typeof console&&console.warn}function v(e,t){for(var n=e.split(".");n.length;)t=t[n.shift()];return t}function y(){if(K[this.baseURL])return K[this.baseURL];"/"!=this.baseURL[this.baseURL.length-1]&&(this.baseURL+="/");var e=new C(this.baseURL,J);return this.baseURL=e.href,K[this.baseURL]=e}function b(e,t){var n,r=0;for(var a in e)if(t.substr(0,a.length)==a&&(t.length==a.length||"/"==t[a.length])){var o=a.split("/").length;if(r>=o)continue;n=a,r=o}return n}function w(e){this.set("@system-env",this.newModule({browser:L,node:!!this._nodeRequire,production:e,"default":!0}))}function x(e){return("."!=e[0]||!!e[1]&&"/"!=e[1]&&"."!=e[1])&&"/"!=e[0]&&!e.match(V)}function S(e,t){return t&&(t=t.replace(/#/g,"%05")),new C(e,t||Y).href.replace(/%05/g,"#")}function E(e,t){return new C(t,y.call(e)).href}function _(e,t){if(!x(e))return S(e,t);var n=b(this.map,e);if(n&&(e=this.map[n]+e.substr(n.length),!x(e)))return S(e);if(this.has(e))return e;if("@node/"==e.substr(0,6)&&-1!=Q.indexOf(e.substr(6))){if(!this._nodeRequire)throw new TypeError("Error loading "+e+". Can only load node core modules in Node.");return this.set(e,this.newModule(m(this._nodeRequire(e.substr(6))))),e}var r=i(this.paths,e);return r&&!x(r)?S(r):E(this,r||e)}function j(e){var t=e.match(ne);return t&&"System.register"==e.substr(t[0].length,15)}function k(){return{name:null,deps:null,originalIndices:null,declare:null,execute:null,executingRequire:!1,declarative:!1,normalizedDeps:null,groupIndex:null,evaluated:!1,module:null,esModule:null,esmExports:!1}}function P(t){if("string"==typeof t)return v(t,e);if(!(t instanceof Array))throw new Error("Global exports must be a string or array.");for(var n={},r=!0,a=0;a<t.length;a++){var o=v(t[a],e);r&&(n["default"]=o,r=!1),n[t[a].split(".").pop()]=o}return n}function R(e){var t,n,r,r="~"==e[0],a=e.lastIndexOf("|");return-1!=a?(t=e.substr(a+1),n=e.substr(r,a-r)||"@system-env"):(t=null,n=e.substr(r)),{module:n,prop:t,negate:r}}function M(e){return(e.negate?"~":"")+e.module+(e.prop?"|"+e.prop:"")}function O(e,t,n){return this["import"](e.module,t).then(function(t){if(e.prop?t=v(e.prop,t):"object"==typeof t&&t+""=="Module"&&(t=t["default"]),n&&"boolean"!=typeof t)throw new TypeError("Condition "+M(e)+" did not resolve to a boolean.");return e.negate?!t:t})}function z(e,t){var n=e.match(ae);if(!n)return Promise.resolve(e);var r=R(n[0].substr(2,n[0].length-3));return this.builder?this.normalize(r.module,t).then(function(t){return r.module=t,e.replace(ae,"#{"+M(r)+"}")}):O.call(this,r,t,!1).then(function(n){if("string"!=typeof n)throw new TypeError("The condition value for "+e+" doesn't resolve to a string.");if(-1!=n.indexOf("/"))throw new TypeError("Unabled to interpolate conditional "+e+(t?" in "+t:"")+"\n	The condition value "+n+' cannot contain a "/" separator.');return e.replace(ae,n)})}function T(e,t){var n=e.lastIndexOf("#?");if(-1==n)return Promise.resolve(e);var r=R(e.substr(n+2));return this.builder?this.normalize(r.module,t).then(function(t){return r.module=t,e.substr(0,n)+"#?"+M(r)}):O.call(this,r,t,!0).then(function(t){return t?e.substr(0,n):"@empty"})}var I="undefined"==typeof window&&"undefined"!=typeof self&&"undefined"!=typeof importScripts,L="undefined"!=typeof window&&"undefined"!=typeof document,A="undefined"!=typeof process&&"undefined"!=typeof process.platform&&!!process.platform.match(/^win/);e.console||(e.console={assert:function(){}});var F,D=Array.prototype.indexOf||function(e){for(var t=0,n=this.length;n>t;t++)if(this[t]===e)return t;return-1};!function(){try{Object.defineProperty({},"a",{})&&(F=Object.defineProperty)}catch(e){F=function(e,t,n){try{e[t]=n.value||n.get.call(e)}catch(r){}}}}();var J;if("undefined"!=typeof document&&document.getElementsByTagName){if(J=document.baseURI,!J){var U=document.getElementsByTagName("base");J=U[0]&&U[0].href||window.location.href}J=J.split("#")[0].split("?")[0],J=J.substr(0,J.lastIndexOf("/")+1)}else if("undefined"!=typeof process&&process.cwd)J="file://"+(A?"/":"")+process.cwd()+"/",A&&(J=J.replace(/\\/g,"/"));else{if("undefined"==typeof location)throw new TypeError("No environment baseURI");J=e.location.href}var C=e.URLPolyfill||e.URL;F(r.prototype,"toString",{value:function(){return"Module"}}),function(){function o(e){return{status:"loading",name:e,linkSets:[],dependencies:[],metadata:{}}}function i(e,t,n){return new Promise(c({step:n.address?"fetch":"locate",loader:e,moduleName:t,moduleMetadata:n&&n.metadata||{},moduleSource:n.source,moduleAddress:n.address}))}function s(e,t,n,r){return new Promise(function(a,o){a(e.loaderObj.normalize(t,n,r))}).then(function(t){var n;if(e.modules[t])return n=o(t),n.status="linked",n.module=e.modules[t],n;for(var r=0,a=e.loads.length;a>r;r++)if(n=e.loads[r],n.name==t)return n;return n=o(t),e.loads.push(n),l(e,n),n})}function l(e,t){u(e,t,Promise.resolve().then(function(){return e.loaderObj.locate({name:t.name,metadata:t.metadata})}))}function u(e,t,n){d(e,t,n.then(function(n){return"loading"==t.status?(t.address=n,e.loaderObj.fetch({name:t.name,metadata:t.metadata,address:n})):void 0}))}function d(t,r,a){a.then(function(a){return"loading"==r.status?Promise.resolve(t.loaderObj.translate({name:r.name,metadata:r.metadata,address:r.address,source:a})).then(function(e){return r.source=e,t.loaderObj.instantiate({name:r.name,metadata:r.metadata,address:r.address,source:e})}).then(function(a){if(void 0===a)return r.address=r.address||"<Anonymous Module "+ ++_+">",r.isDeclarative=!0,E.call(t.loaderObj,r).then(function(t){var a=e.System,o=a.register;a.register=function(e,t,n){"string"!=typeof e&&(n=t,t=e),r.declare=n,r.depsList=t},n(t,r.address,{}),a.register=o});if("object"!=typeof a)throw TypeError("Invalid instantiate return value");r.depsList=a.deps||[],r.execute=a.execute,r.isDeclarative=!1}).then(function(){r.dependencies=[];for(var e=r.depsList,n=[],a=0,o=e.length;o>a;a++)(function(e,a){n.push(s(t,e,r.name,r.address).then(function(t){if(r.dependencies[a]={key:e,value:t.name},"linked"!=t.status)for(var n=r.linkSets.concat([]),o=0,i=n.length;i>o;o++)m(n[o],t)}))})(e[a],a);return Promise.all(n)}).then(function(){r.status="loaded";for(var e=r.linkSets.concat([]),t=0,n=e.length;n>t;t++)h(e[t],r)}):void 0})["catch"](function(e){r.status="failed",r.exception=e;for(var t=r.linkSets.concat([]),n=0,a=t.length;a>n;n++)g(t[n],r,e)})}function c(e){return function(t,n){var r=e.loader,a=e.moduleName,i=e.step;if(r.modules[a])throw new TypeError('"'+a+'" already exists in the module table');for(var s,c=0,m=r.loads.length;m>c;c++)if(r.loads[c].name==a&&(s=r.loads[c],"translate"!=i||s.source||(s.address=e.moduleAddress,d(r,s,Promise.resolve(e.moduleSource))),s.linkSets.length&&s.linkSets[0].loads[0].name==s.name))return s.linkSets[0].done.then(function(){t(s)});var p=s||o(a);p.metadata=e.moduleMetadata;var h=f(r,p);r.loads.push(p),t(h.done),"locate"==i?l(r,p):"fetch"==i?u(r,p,Promise.resolve(e.moduleAddress)):(p.address=e.moduleAddress,d(r,p,Promise.resolve(e.moduleSource)))}}function f(e,t){var n={loader:e,loads:[],startingLoad:t,loadingCount:0};return n.done=new Promise(function(e,t){n.resolve=e,n.reject=t}),m(n,t),n}function m(e,t){if("failed"!=t.status){for(var n=0,r=e.loads.length;r>n;n++)if(e.loads[n]==t)return;e.loads.push(t),t.linkSets.push(e),"loaded"!=t.status&&e.loadingCount++;for(var a=e.loader,n=0,r=t.dependencies.length;r>n;n++)if(t.dependencies[n]){var o=t.dependencies[n].value;if(!a.modules[o])for(var i=0,s=a.loads.length;s>i;i++)if(a.loads[i].name==o){m(e,a.loads[i]);break}}}}function p(e){var t=!1;try{w(e,function(n,r){g(e,n,r),t=!0})}catch(n){g(e,null,n),t=!0}return t}function h(e,t){if(e.loadingCount--,!(e.loadingCount>0)){var n=e.startingLoad;if(e.loader.loaderObj.execute===!1){for(var r=[].concat(e.loads),a=0,o=r.length;o>a;a++){var t=r[a];t.module=t.isDeclarative?{name:t.name,module:j({}),evaluated:!0}:{module:j({})},t.status="linked",v(e.loader,t)}return e.resolve(n)}var i=p(e);i||e.resolve(n)}}function g(e,n,r){var a=e.loader;e:if(n)if(e.loads[0].name==n.name)r=t(r,"Error loading "+n.name);else{for(var o=0;o<e.loads.length;o++)for(var i=e.loads[o],s=0;s<i.dependencies.length;s++){var l=i.dependencies[s];if(l.value==n.name){r=t(r,"Error loading "+n.name+' as "'+l.key+'" from '+i.name);break e}}r=t(r,"Error loading "+n.name+" from "+e.loads[0].name)}else r=t(r,"Error linking "+e.loads[0].name);for(var u=e.loads.concat([]),o=0,d=u.length;d>o;o++){var n=u[o];a.loaderObj.failed=a.loaderObj.failed||[],-1==D.call(a.loaderObj.failed,n)&&a.loaderObj.failed.push(n);var c=D.call(n.linkSets,e);if(n.linkSets.splice(c,1),0==n.linkSets.length){var f=D.call(e.loader.loads,n);-1!=f&&e.loader.loads.splice(f,1)}}e.reject(r)}function v(e,t){if(e.loaderObj.trace){e.loaderObj.loads||(e.loaderObj.loads={});var n={};t.dependencies.forEach(function(e){n[e.key]=e.value}),e.loaderObj.loads[t.name]={name:t.name,deps:t.dependencies.map(function(e){return e.key}),depMap:n,address:t.address,metadata:t.metadata,source:t.source,kind:t.isDeclarative?"declarative":"dynamic"}}t.name&&(e.modules[t.name]=t.module);var r=D.call(e.loads,t);-1!=r&&e.loads.splice(r,1);for(var a=0,o=t.linkSets.length;o>a;a++)r=D.call(t.linkSets[a].loads,t),-1!=r&&t.linkSets[a].loads.splice(r,1);t.linkSets.splice(0,t.linkSets.length)}function y(e,t,n){try{var a=t.execute()}catch(o){return void n(t,o)}return a&&a instanceof r?a:void n(t,new TypeError("Execution must define a Module instance"))}function b(e,t,n){var r=e._loader.importPromises;return r[t]=n.then(function(e){return r[t]=void 0,e},function(e){throw r[t]=void 0,e})}function w(e,t){var n=e.loader;if(e.loads.length)for(var r=e.loads.concat([]),a=0;a<r.length;a++){var o=r[a],i=y(e,o,t);if(!i)return;o.module={name:o.name,module:i},o.status="linked",v(n,o)}}function x(e,t){return t.module.module}function S(){}function E(){throw new TypeError("ES6 transpilation is only provided in the dev module loader build.")}var _=0;a.prototype={constructor:a,define:function(e,t,n){if(this._loader.importPromises[e])throw new TypeError("Module is already loading.");return b(this,e,new Promise(c({step:"translate",loader:this._loader,moduleName:e,moduleMetadata:n&&n.metadata||{},moduleSource:t,moduleAddress:n&&n.address})))},"delete":function(e){var t=this._loader;return delete t.importPromises[e],delete t.moduleRecords[e],t.modules[e]?delete t.modules[e]:!1},get:function(e){return this._loader.modules[e]?(S(this._loader.modules[e],[],this),this._loader.modules[e].module):void 0},has:function(e){return!!this._loader.modules[e]},"import":function(e,t,n){"object"==typeof t&&(t=t.name);var r=this;return Promise.resolve(r.normalize(e,t)).then(function(e){var t=r._loader;return t.modules[e]?(S(t.modules[e],[],t._loader),t.modules[e].module):t.importPromises[e]||b(r,e,i(t,e,{}).then(function(n){return delete t.importPromises[e],x(t,n)}))})},load:function(e){var t=this._loader;return t.modules[e]?Promise.resolve():t.importPromises[e]||b(this,e,new Promise(c({step:"locate",loader:t,moduleName:e,moduleMetadata:{},moduleSource:void 0,moduleAddress:void 0})).then(function(){delete t.importPromises[e]}))},module:function(e,t){var n=o();n.address=t&&t.address;var r=f(this._loader,n),a=Promise.resolve(e),i=this._loader,s=r.done.then(function(){return x(i,n)});return d(i,n,a),s},newModule:function(e){if("object"!=typeof e)throw new TypeError("Expected object");var t=new r,n=[];if(Object.getOwnPropertyNames&&null!=e)n=Object.getOwnPropertyNames(e);else for(var a in e)n.push(a);for(var o=0;o<n.length;o++)(function(n){F(t,n,{configurable:!1,enumerable:!0,get:function(){return e[n]},set:function(){throw new Error("Module exports cannot be changed externally.")}})})(n[o]);return Object.freeze&&Object.freeze(t),t},set:function(e,t){if(!(t instanceof r))throw new TypeError("Loader.set("+e+", module) must be a module");this._loader.modules[e]={module:t}},normalize:function(e,t,n){return e},locate:function(e){return e.name},fetch:function(e){},translate:function(e){return e.source},instantiate:function(e){}};var j=a.prototype.newModule}();var q;s.prototype=a.prototype,o.prototype=new s;var N;if("undefined"!=typeof XMLHttpRequest)N=function(e,t,n,r){function a(){n(i.responseText)}function o(){r(new Error("XHR error"+(i.status?" ("+i.status+(i.statusText?" "+i.statusText:"")+")":"")+" loading "+e))}var i=new XMLHttpRequest,s=!0,l=!1;if(!("withCredentials"in i)){var u=/^(\w+:)?\/\/([^\/]+)/.exec(e);u&&(s=u[2]===window.location.host,u[1]&&(s&=u[1]===window.location.protocol))}s||"undefined"==typeof XDomainRequest||(i=new XDomainRequest,i.onload=a,i.onerror=o,i.ontimeout=o,i.onprogress=function(){},i.timeout=0,l=!0),i.onreadystatechange=function(){4===i.readyState&&(0==i.status?i.responseText?a():(i.addEventListener("error",o),i.addEventListener("load",a)):200===i.status?a():o())},i.open("GET",e,!0),i.setRequestHeader&&(i.setRequestHeader("Accept","application/x-es-module, */*"),t&&("string"==typeof t&&i.setRequestHeader("Authorization",t),i.withCredentials=!0)),l?setTimeout(function(){i.send()},0):i.send(null)};else if("undefined"!="function"&&"undefined"!=typeof process){var $;N=function(e,t,n,r){if("file:///"!=e.substr(0,8))throw new Error('Unable to fetch "'+e+'". Only file URLs of the form file:/// allowed running in Node.');return $=$||__webpack_require__(31),e=A?e.replace(/\//g,"\\").substr(8):e.substr(7),$.readFile(e,function(e,t){if(e)return r(e);var a=t+"";"\ufeff"===a[0]&&(a=a.substr(1)),n(a)})}}else{if("undefined"==typeof self||"undefined"==typeof self.fetch)throw new TypeError("No environment fetch API available.");N=function(e,t,n,r){var a={headers:{Accept:"application/x-es-module, */*"}};t&&("string"==typeof t&&(a.headers.Authorization=t),a.credentials="include"),fetch(e,a).then(function(e){if(e.ok)return e.text();throw new Error("Fetch error: "+e.status+" "+e.statusText)}).then(n,r)}}o.prototype.fetch=function(e){return new Promise(function(t,n){N(e.address,void 0,t,n)})};var B=function(){function t(t){var r=this;return Promise.resolve(e["typescript"==r.transpiler?"ts":r.transpiler]||(r.pluginLoader||r)["import"](r.transpiler)).then(function(e){e.__useDefault&&(e=e["default"]);var a;return a=e.Compiler?n:e.createLanguageService?i:o,"(function(__moduleName){"+a.call(r,t,e)+'\n})("'+t.name+'");\n//# sourceURL='+t.address+"!transpiled"})}function n(e,t){var n=this.traceurOptions||{};n.modules="instantiate",n.script=!1,void 0===n.sourceMaps&&(n.sourceMaps="inline"),n.filename=e.address,n.inputSourceMap=e.metadata.sourceMap,n.moduleName=!1;var a=new t.Compiler(n);return r(e.source,a,n.filename)}function r(e,t,n){try{return t.compile(e,n)}catch(r){if(r.length)throw r[0];throw r}}function o(e,t){var n=this.babelOptions||{};return n.modules="system",void 0===n.sourceMap&&(n.sourceMap="inline"),n.inputSourceMap=e.metadata.sourceMap,n.filename=e.address,n.code=!0,n.ast=!1,t.transform(e.source,n).code}function i(e,t){var n=this.typescriptOptions||{};return n.target=n.target||t.ScriptTarget.ES5,void 0===n.sourceMap&&(n.sourceMap=!0),n.sourceMap&&n.inlineSourceMap!==!1&&(n.inlineSourceMap=!0),n.module=t.ModuleKind.System,t.transpile(e.source,n,e.address)}return a.prototype.transpiler="traceur",t}();u.prototype=o.prototype,l.prototype=new u,l.prototype.constructor=l,l.prototype.instantiate=function(){};var H,X=!0;try{Object.getOwnPropertyDescriptor({a:0},"a")}catch(Z){X=!1}var G,W=["main","format","defaultExtension","meta","map","basePath","depCache"];!function(){function n(e){var t=e.source.lastIndexOf("\n"),n="esm"==e.metadata.format||"register"==e.metadata.format||e.metadata.bundle,r=e.metadata.sourceMap;if(r){if("object"!=typeof r)throw new TypeError("load.metadata.sourceMap must be set to an object.");r.mappings&&(r.mappings=";"+r.mappings)}return r=JSON.stringify(r),(n?"(function(System, SystemJS) {":"")+("cjs"==e.metadata.format?e.source.replace(l,""):e.source)+(n?"\n})(System, System);":"")+("\n//# sourceURL="!=e.source.substr(t,15)?"\n//# sourceURL="+e.address+(r?"!transpiled":""):"")+(r&&s&&"\n//# sourceMappingURL=data:application/json;base64,"+btoa(unescape(encodeURIComponent(r)))||"")}function r(t,n){i=n,0==c++&&(u=e.System),e.System=e.SystemJS=t}function a(){0==--c&&(e.System=e.SystemJS=u),i=void 0}function o(e){p||(p=document.head||document.body||document.documentElement);var o=document.createElement("script");o.text=n(e,!1);var i,s=window.onerror;if(window.onerror=function(n){i=t(n,"Evaluating "+e.address)},r(this,e),e.metadata.integrity&&o.setAttribute("integrity",e.metadata.integrity),e.metadata.nonce&&o.setAttribute("nonce",e.metadata.nonce),p.appendChild(o),p.removeChild(o),a(),window.onerror=s,i)throw i}var i,s="undefined"!=typeof btoa,l=/^\#\!.*/;d("pushRegister_",function(){return function(e){return i?(this.reduceRegister_(i,e),!0):!1}});var u,c=0;G=function(e){if((e.metadata.integrity||e.metadata.nonce)&&f)return o.call(this,e);try{r(this,e),i=e,(0,eval)(n(e)),a()}catch(s){throw a(),t(s,"Evaluating "+e.address)}};var f=!1;if(L&&"undefined"!=typeof document&&document.getElementsByTagName){var m=document.getElementsByTagName("script");$__curScript=m[m.length-1],window.chrome&&window.chrome.extension||navigator.userAgent.match(/^Node\.js/)||(f=!0)}var p}();var V=/^[^\/]+:\/\//,K={},Y=new C(J);c(function(e){return function(){e.call(this),this.baseURL=J.substr(0,J.lastIndexOf("/")+1),this.map={},this.paths={},this.warnings=!1,this.defaultJSExtensions=!1,this.pluginFirst=!1,this.loaderErrorStack=!1,this.set("@empty",this.newModule({})),w.call(this,!1)}}),"undefined"=="function"||"undefined"==typeof process||process.browser||(l.prototype._nodeRequire=!(function webpackMissingModule() { var e = new Error("Cannot find module \".\""); e.code = 'MODULE_NOT_FOUND'; throw e; }()));var Q=["assert","buffer","child_process","cluster","console","constants","crypto","dgram","dns","domain","events","fs","http","https","module","net","os","path","process","punycode","querystring","readline","repl","stream","string_decoder","sys","timers","tls","tty","url","util","vm","zlib"];d("normalize",function(e){return function(e,t,n){var r=_.call(this,e,t);return n||!this.defaultJSExtensions||".js"==r.substr(r.length-3,3)||x(r)||(r+=".js"),r}});var ee="undefined"!=typeof XMLHttpRequest;d("locate",function(e){return function(t){return Promise.resolve(e.call(this,t)).then(function(e){return ee?e.replace(/#/g,"%23"):e})}}),d("fetch",function(){return function(e){return new Promise(function(t,n){N(e.address,e.metadata.authorization,t,n)})}}),d("import",function(e){return function(t,n,r){return n&&n.name&&g.call(this,"SystemJS.import(name, { name: parentName }) is deprecated for SystemJS.import(name, parentName), while importing "+t+" from "+n.name),e.call(this,t,n,r).then(function(e){return e.__useDefault?e["default"]:e})}}),d("translate",function(e){return function(t){return"detect"==t.metadata.format&&(t.metadata.format=void 0),e.call(this,t)}}),d("instantiate",function(e){return function(e){if("json"==e.metadata.format&&!this.builder){var t=e.metadata.entry=k();t.deps=[],t.execute=function(){try{return JSON.parse(e.source)}catch(t){throw new Error("Invalid JSON file "+e.name)}}}}}),l.prototype.env="development";var te;l.prototype.config=function(e){function t(e){for(var t in e)if(hasOwnProperty.call(e,t))return!0}var n=this;if("loaderErrorStack"in e&&(te=$__curScript,e.loaderErrorStack?$__curScript=void 0:$__curScript=te),"warnings"in e&&(n.warnings=e.warnings),e.transpilerRuntime===!1&&(n._loader.loadedTranspilerRuntime=!0),e.baseURL){if(t(n.packages)||t(n.meta)||t(n.depCache)||t(n.bundles)||t(n.packageConfigPaths))throw new TypeError("Incorrect configuration order. The baseURL must be configured with the first SystemJS.config call.");n.baseURL=e.baseURL,y.call(n)}if(e.defaultJSExtensions&&(n.defaultJSExtensions=e.defaultJSExtensions,g.call(n,"The defaultJSExtensions configuration option is deprecated, use packages configuration instead.")),e.pluginFirst&&(n.pluginFirst=e.pluginFirst),e.production&&w.call(n,!0),e.paths)for(var r in e.paths)n.paths[r]=e.paths[r];if(e.map){var a="";for(var r in e.map){var o=e.map[r];if("string"!=typeof o){a+=(a.length?", ":"")+'"'+r+'"';var i=n.defaultJSExtensions&&".js"!=r.substr(r.length-3,3),s=n.decanonicalize(r);i&&".js"==s.substr(s.length-3,3)&&(s=s.substr(0,s.length-3));var l="";for(var u in n.packages)s.substr(0,u.length)==u&&(!s[u.length]||"/"==s[u.length])&&l.split("/").length<u.split("/").length&&(l=u);l&&n.packages[l].main&&(s=s.substr(0,s.length-n.packages[l].main.length-1));var u=n.packages[s]=n.packages[s]||{};u.map=o}else n.map[r]=o}a&&g.call(n,"The map configuration for "+a+' uses object submaps, which is deprecated in global map.\nUpdate this to use package contextual map with configs like SystemJS.config({ packages: { "'+r+'": { map: {...} } } }).')}if(e.packageConfigPaths){for(var d=[],c=0;c<e.packageConfigPaths.length;c++){var f=e.packageConfigPaths[c],m=Math.max(f.lastIndexOf("*")+1,f.lastIndexOf("/")),i=n.defaultJSExtensions&&".js"!=f.substr(m-3,3),p=n.decanonicalize(f.substr(0,m));i&&".js"==p.substr(p.length-3,3)&&(p=p.substr(0,p.length-3)),d[c]=p+f.substr(m)}n.packageConfigPaths=d}if(e.bundles)for(var r in e.bundles){for(var v=[],c=0;c<e.bundles[r].length;c++){var i=n.defaultJSExtensions&&".js"!=e.bundles[r][c].substr(e.bundles[r][c].length-3,3),b=n.decanonicalize(e.bundles[r][c]);i&&".js"==b.substr(b.length-3,3)&&(b=b.substr(0,b.length-3)),v.push(b)}n.bundles[r]=v}if(e.packages)for(var r in e.packages){if(r.match(/^([^\/]+:)?\/\/$/))throw new TypeError('"'+r+'" is not a valid package name.');var s=_.call(n,r);"/"==s[s.length-1]&&(s=s.substr(0,s.length-1)),n.packages[s]=n.packages[s]||{};var u=e.packages[r];u.modules&&(g.call(n,"Package "+r+' is configured with "modules", which is deprecated as it has been renamed to "meta".'),u.meta=u.modules,delete u.modules),"object"==typeof u.main&&(u.map=u.map||{},u.map["./@main"]=u.main,u.main["default"]=u.main["default"]||"./",u.main="@main");for(var S in u)-1==D.call(W,S)&&g.call(n,'"'+S+'" is not a valid package configuration option in package '+r);h(n.packages[s],u)}for(var E in e){var o=e[E];if("baseURL"!=E&&"map"!=E&&"packages"!=E&&"bundles"!=E&&"paths"!=E&&"warnings"!=E&&"packageConfigPaths"!=E&&"loaderErrorStack"!=E)if("object"!=typeof o||o instanceof Array)n[E]=o;else{n[E]=n[E]||{};for(var r in o)if("meta"==E&&"*"==r[0])n[E][r]=o[r];else if("meta"==E){var j=_.call(n,r);n.defaultJSExtensions&&".js"!=j.substr(j.length-3,3)&&!x(j)&&(j+=".js"),n[E][j]=o[r]}else if("depCache"==E){var i=n.defaultJSExtensions&&".js"!=r.substr(r.length-3,3),s=n.decanonicalize(r);i&&".js"==s.substr(s.length-3,3)&&(s=s.substr(0,s.length-3)),n[E][s]=o[r]}else n[E][r]=o[r]}}},function(){function e(e,t){var n,r,a=0;for(var o in e.packages)t.substr(0,o.length)!==o||t.length!==o.length&&"/"!==t[o.length]||(r=o.split("/").length,r>a&&(n=o,a=r));return n}function t(e,t,n,r,a){if(!r||"/"==r[r.length-1]||a||t.defaultExtension===!1)return r;if(r.match(ae))return r;var o=!1;if(t.meta&&p(t.meta,r,function(e,t,n){return 0==n||e.lastIndexOf("*")!=e.length-1?o=!0:void 0}),!o&&e.meta&&p(e.meta,n+"/"+r,function(e,t,n){return 0==n||e.lastIndexOf("*")!=e.length-1?o=!0:void 0}),o)return r;var i="."+(t.defaultExtension||"js");return r.substr(r.length-i.length)!=i?r+i:r}function n(e,n,r,o,i){if(!o){if(!n.main)return r+(e.defaultJSExtensions?".js":"");o="./"==n.main.substr(0,2)?n.main.substr(2):n.main}if(n.map){var s="./"+o,l=b(n.map,s);if(l||(s="./"+t(e,n,r,o,i),s!="./"+o&&(l=b(n.map,s))),l)return a(e,n,r,l,s,i)}return r+"/"+t(e,n,r,o,i)}function r(e,t,n){if("."==e)throw new Error("Package "+n+' has a map entry for "." which is not permitted.');if(t.substr(0,e.length)==e&&"/"!=e[e.length-1]&&"/"==t[e.length])throw new Error("Package "+n+' has a recursive map for "'+e+'" which is not permitted.')}function a(e,n,a,o,i,s){var l=n.map[o];if(r(o,l,a),"string"!=typeof l&&(l=o=i),r(o,l,a),"."==l)l=a;else if("./"==l.substr(0,2))return a+"/"+t(e,n,a,l.substr(2)+i.substr(o.length),s);return e.normalizeSync(l+i.substr(o.length),a+"/")}function o(e,n,r,a,o){if(!a){if(!n.main)return Promise.resolve(r+(e.defaultJSExtensions?".js":""));a="./"==n.main.substr(0,2)?n.main.substr(2):n.main}var i,l;return n.map&&(i="./"+a,l=b(n.map,i),l||(i="./"+t(e,n,r,a,o),i!="./"+a&&(l=b(n.map,i)))),(l?s(e,n,r,l,i,o):Promise.resolve()).then(function(i){return i?Promise.resolve(i):Promise.resolve(r+"/"+t(e,n,r,a,o))})}function i(e,n,r,a,o,i,s){if("."==o)o=r;else if("./"==o.substr(0,2))return Promise.resolve(r+"/"+t(e,n,r,o.substr(2)+i.substr(a.length),s)).then(function(t){return z.call(e,t,r+"/")});return e.normalize(o+i.substr(a.length),r+"/")}function s(e,t,n,a,o,s){var l=t.map[a];return"string"==typeof l?(r(a,l,n),i(e,t,n,a,l,o,s)):e.builder?Promise.resolve(n+"/#:"+o):e["import"](t.map["@env"]||"@system-env",n).then(function(e){for(var t in l){var n="~"==t[0],r=v(n?t.substr(1):t,e);if(!n&&r||n&&!r)return l[t]}}).then(function(l){if(l){if("string"!=typeof l)throw new Error("Unable to map a package conditional to a package conditional.");return r(a,l,n),i(e,t,n,a,l,o,s)}})}function u(e){var t=e.lastIndexOf("*"),n=Math.max(t+1,e.lastIndexOf("/"));return{length:n,regEx:new RegExp("^("+e.substr(0,n).replace(/\*/g,"[^\\/]+")+")(\\/|$)"),wildcard:-1!=t}}function f(e,t){for(var n,r,a=!1,o=0;o<e.packageConfigPaths.length;o++){var i=e.packageConfigPaths[o],s=y[i]||(y[i]=u(i));if(!(t.length<s.length)){var l=t.match(s.regEx);!l||n&&(a&&s.wildcard||!(n.length<l[1].length))||(n=l[1],a=!s.wildcard,r=n+i.substr(s.length))}}return n?{packageName:n,configPath:r}:void 0}function m(e,t,n){var r=e.pluginLoader||e;return(r.meta[n]=r.meta[n]||{}).format="json",r.load(n).then(function(){var a=r.get(n)["default"];a.systemjs&&(a=a.systemjs),a.modules&&(a.meta=a.modules,g.call(e,"Package config file "+n+' is configured with "modules", which is deprecated as it has been renamed to "meta".'));for(var o in a)-1==D.call(W,o)&&delete a[o];var i=e.packages[t]=e.packages[t]||{};if(h(i,a,!0),a.depCache){for(var s in a.depCache){var l;l="./"==s.substr(0,2)?t+"/"+s.substr(2):_.call(e,s),e.depCache[l]=(e.depCache[l]||[]).concat(a.depCache[s])}delete a.depCache}return"object"==typeof i.main&&(i.map=i.map||{},i.map["./@main"]=i.main,i.main["default"]=i.main["default"]||"./",i.main="@main"),i})}function p(e,t,n){var r;for(var a in e){var o="./"==a.substr(0,2)?"./":"";if(o&&(a=a.substr(2)),r=a.indexOf("*"),-1!==r&&a.substr(0,r)==t.substr(0,r)&&a.substr(r+1)==t.substr(t.length-a.length+r+1)&&n(a,e[o+a],a.split("/").length))return}var i=e[t]||e["./"+t];i&&n(i,i,0)}c(function(e){return function(){e.call(this),this.packages={},this.packageConfigPaths=[]}}),l.prototype.normalizeSync=l.prototype.decanonicalize=l.prototype.normalize,d("decanonicalize",function(t){return function(n,r){if(this.builder)return t.call(this,n,r,!0);var a=t.call(this,n,r);if(!this.defaultJSExtensions)return a;var o=e(this,a),i=this.packages[o],s=i&&i.defaultExtension;return void 0==s&&i&&i.meta&&p(i.meta,a.substr(o),function(e,t,n){return 0==n||e.lastIndexOf("*")!=e.length-1?(s=!1,!0):void 0}),(s===!1||s&&".js"!=s)&&".js"!=n.substr(n.length-3,3)&&".js"==a.substr(a.length-3,3)&&(a=a.substr(0,a.length-3)),a}}),d("normalizeSync",function(t){return function(r,o,i){g.call(this,"SystemJS.normalizeSync has been deprecated for SystemJS.decanonicalize.");var s=this;if(i=i===!0,o)var l=e(s,o)||s.defaultJSExtensions&&".js"==o.substr(o.length-3,3)&&e(s,o.substr(0,o.length-3));var u=l&&s.packages[l];if(u&&"."!=r[0]){var d=u.map,c=d&&b(d,r);if(c&&"string"==typeof d[c])return a(s,u,l,c,r,i)}var m=s.defaultJSExtensions&&".js"!=r.substr(r.length-3,3),p=t.call(s,r,o);m&&".js"!=p.substr(p.length-3,3)&&(m=!1),m&&(p=p.substr(0,p.length-3));var h=f(s,p),v=h&&h.packageName||e(s,p);if(!v)return p+(m?".js":"");var y=p.substr(v.length+1);return n(s,s.packages[v]||{},v,y,i)}}),d("normalize",function(t){return function(n,r,a){var i=this;return a=a===!0,Promise.resolve().then(function(){if(r)var t=e(i,r)||i.defaultJSExtensions&&".js"==r.substr(r.length-3,3)&&e(i,r.substr(0,r.length-3));var o=t&&i.packages[t];if(o&&"./"!=n.substr(0,2)){var l=o.map,u=l&&b(l,n);if(u)return s(i,o,t,u,n,a)}return Promise.resolve()}).then(function(s){if(s)return s;var l=i.defaultJSExtensions&&".js"!=n.substr(n.length-3,3),u=t.call(i,n,r);l&&".js"!=u.substr(u.length-3,3)&&(l=!1),l&&(u=u.substr(0,u.length-3));var d=f(i,u),c=d&&d.packageName||e(i,u);if(!c)return Promise.resolve(u+(l?".js":""));var p=i.packages[c],h=p&&(p.configured||!d);return(h?Promise.resolve(p):m(i,c,d.configPath)).then(function(e){var t=u.substr(c.length+1);return o(i,e,c,t,a)})})}});var y={};d("locate",function(t){return function(n){var r=this;return Promise.resolve(t.call(this,n)).then(function(t){var a=e(r,n.name);if(a){var o=r.packages[a],i=n.name.substr(a.length+1);o.format&&(n.metadata.format=n.metadata.format||o.format);var s={};if(o.meta){var l=0;p(o.meta,i,function(e,t,n){n>l&&(l=n),h(s,t,n&&l>n)}),h(n.metadata,s)}}return t})}})}(),function(){function t(){if(o&&"interactive"===o.script.readyState)return o.load;for(var e=0;e<l.length;e++)if("interactive"==l[e].script.readyState)return o=l[e],o.load}function n(e,t){return new Promise(function(e,n){t.metadata.integrity&&n(new Error("Subresource integrity checking is not supported in web workers.")),i=t;try{importScripts(t.address)}catch(r){i=null,n(r)}i=null,t.metadata.entry||n(new Error(t.address+" did not call System.register or AMD define")),e("")})}if("undefined"!=typeof document)var r=document.getElementsByTagName("head")[0];var a,o,i=null,s=r&&function(){var e=document.createElement("script"),t="undefined"!=typeof opera&&"[object Opera]"===opera.toString();return e.attachEvent&&!(e.attachEvent.toString&&e.attachEvent.toString().indexOf("[native code")<0)&&!t}(),l=[],u=0,c=[];d("pushRegister_",function(e){return function(n){return e.call(this,n)?!1:(i?this.reduceRegister_(i,n):s?this.reduceRegister_(t(),n):u?c.push(n):this.reduceRegister_(null,n),
+	!function(){function e(){!function(e){function t(e,t){if(!e.originalErr)for(var n=(e.stack||e.message||e).split("\n"),r=[],a=0;a<n.length;a++)("undefined"==typeof $__curScript||-1==n[a].indexOf($__curScript.src))&&r.push(n[a]);var o=(r?r.join("\n	"):e.message)+"\n	"+t;L||(o=o.replace(A?/file:\/\/\//g:/file:\/\//g,""));var i=new Error(o,e.fileName,e.lineNumber);return L?i.stack=null:i.stack=o,i.originalErr=e.originalErr||e,i}function n(e,n,r){try{new Function(e).call(r)}catch(a){throw t(a,"Evaluating "+n)}}function r(){}function a(t){this._loader={loaderObj:this,loads:[],modules:{},importPromises:{},moduleRecords:{}},F(this,"global",{get:function(){return e}})}function o(){a.call(this),this.paths={}}function i(e,t){var n,r="",a=0;for(var o in e){var i=o.split("*");if(i.length>2)throw new TypeError("Only one wildcard in a path is permitted");if(1==i.length){if(t==o)return e[o];if(t.substr(0,o.length-1)==o.substr(0,o.length-1)&&(t.length<o.length||t[o.length-1]==o[o.length-1])&&"/"==e[o][e[o].length-1])return e[o].substr(0,e[o].length-1)+(t.length>o.length?"/"+t.substr(o.length):"")}else{var s=i[0].length;s>=a&&t.substr(0,i[0].length)==i[0]&&t.substr(t.length-i[1].length)==i[1]&&(a=s,r=o,n=t.substr(i[0].length,t.length-i[1].length-i[0].length))}}var l=e[r];return"string"==typeof n&&(l=l.replace("*",n)),l}function s(){}function l(){o.call(this),H.call(this)}function u(){}function d(e,t){l.prototype[e]=t(l.prototype[e]||function(){})}function c(e){H=e(H||function(){})}function f(e){for(var t=[],n=[],r=0,a=e.length;a>r;r++){var o=D.call(t,e[r]);-1===o?(t.push(e[r]),n.push([r])):n[o].push(r)}return{names:t,indices:n}}function m(e){var t={};if("object"==typeof e||"function"==typeof e)if(X){var n;for(var r in e)(n=Object.getOwnPropertyDescriptor(e,r))&&F(t,r,n)}else{var a=e&&e.hasOwnProperty;for(var r in e)(!a||e.hasOwnProperty(r))&&(t[r]=e[r])}return t["default"]=e,F(t,"__useDefault",{value:!0}),t}function p(e,t,n){for(var r in t)n&&r in e||(e[r]=t[r]);return e}function h(e,t,n){for(var r in t){var a=t[r];r in e?a instanceof Array&&e[r]instanceof Array?e[r]=[].concat(n?a:e[r]).concat(n?e[r]:a):"object"==typeof a&&null!==a&&"object"==typeof e[r]?e[r]=p(p({},e[r]),a,n):n||(e[r]=a):e[r]=a}}function g(e){this.warnings&&"undefined"!=typeof console&&console.warn}function v(e,t){for(var n=e.split(".");n.length;)t=t[n.shift()];return t}function y(){if(K[this.baseURL])return K[this.baseURL];"/"!=this.baseURL[this.baseURL.length-1]&&(this.baseURL+="/");var e=new C(this.baseURL,J);return this.baseURL=e.href,K[this.baseURL]=e}function b(e,t){var n,r=0;for(var a in e)if(t.substr(0,a.length)==a&&(t.length==a.length||"/"==t[a.length])){var o=a.split("/").length;if(r>=o)continue;n=a,r=o}return n}function w(e){this.set("@system-env",this.newModule({browser:L,node:!!this._nodeRequire,production:e,"default":!0}))}function x(e){return("."!=e[0]||!!e[1]&&"/"!=e[1]&&"."!=e[1])&&"/"!=e[0]&&!e.match(V)}function S(e,t){return t&&(t=t.replace(/#/g,"%05")),new C(e,t||Y).href.replace(/%05/g,"#")}function E(e,t){return new C(t,y.call(e)).href}function _(e,t){if(!x(e))return S(e,t);var n=b(this.map,e);if(n&&(e=this.map[n]+e.substr(n.length),!x(e)))return S(e);if(this.has(e))return e;if("@node/"==e.substr(0,6)&&-1!=Q.indexOf(e.substr(6))){if(!this._nodeRequire)throw new TypeError("Error loading "+e+". Can only load node core modules in Node.");return this.set(e,this.newModule(m(this._nodeRequire(e.substr(6))))),e}var r=i(this.paths,e);return r&&!x(r)?S(r):E(this,r||e)}function j(e){var t=e.match(ne);return t&&"System.register"==e.substr(t[0].length,15)}function k(){return{name:null,deps:null,originalIndices:null,declare:null,execute:null,executingRequire:!1,declarative:!1,normalizedDeps:null,groupIndex:null,evaluated:!1,module:null,esModule:null,esmExports:!1}}function P(t){if("string"==typeof t)return v(t,e);if(!(t instanceof Array))throw new Error("Global exports must be a string or array.");for(var n={},r=!0,a=0;a<t.length;a++){var o=v(t[a],e);r&&(n["default"]=o,r=!1),n[t[a].split(".").pop()]=o}return n}function R(e){var t,n,r,r="~"==e[0],a=e.lastIndexOf("|");return-1!=a?(t=e.substr(a+1),n=e.substr(r,a-r)||"@system-env"):(t=null,n=e.substr(r)),{module:n,prop:t,negate:r}}function M(e){return(e.negate?"~":"")+e.module+(e.prop?"|"+e.prop:"")}function O(e,t,n){return this["import"](e.module,t).then(function(t){if(e.prop?t=v(e.prop,t):"object"==typeof t&&t+""=="Module"&&(t=t["default"]),n&&"boolean"!=typeof t)throw new TypeError("Condition "+M(e)+" did not resolve to a boolean.");return e.negate?!t:t})}function z(e,t){var n=e.match(ae);if(!n)return Promise.resolve(e);var r=R(n[0].substr(2,n[0].length-3));return this.builder?this.normalize(r.module,t).then(function(t){return r.module=t,e.replace(ae,"#{"+M(r)+"}")}):O.call(this,r,t,!1).then(function(n){if("string"!=typeof n)throw new TypeError("The condition value for "+e+" doesn't resolve to a string.");if(-1!=n.indexOf("/"))throw new TypeError("Unabled to interpolate conditional "+e+(t?" in "+t:"")+"\n	The condition value "+n+' cannot contain a "/" separator.');return e.replace(ae,n)})}function T(e,t){var n=e.lastIndexOf("#?");if(-1==n)return Promise.resolve(e);var r=R(e.substr(n+2));return this.builder?this.normalize(r.module,t).then(function(t){return r.module=t,e.substr(0,n)+"#?"+M(r)}):O.call(this,r,t,!0).then(function(t){return t?e.substr(0,n):"@empty"})}var I="undefined"==typeof window&&"undefined"!=typeof self&&"undefined"!=typeof importScripts,L="undefined"!=typeof window&&"undefined"!=typeof document,A="undefined"!=typeof process&&"undefined"!=typeof process.platform&&!!process.platform.match(/^win/);e.console||(e.console={assert:function(){}});var F,D=Array.prototype.indexOf||function(e){for(var t=0,n=this.length;n>t;t++)if(this[t]===e)return t;return-1};!function(){try{Object.defineProperty({},"a",{})&&(F=Object.defineProperty)}catch(e){F=function(e,t,n){try{e[t]=n.value||n.get.call(e)}catch(r){}}}}();var J;if("undefined"!=typeof document&&document.getElementsByTagName){if(J=document.baseURI,!J){var U=document.getElementsByTagName("base");J=U[0]&&U[0].href||window.location.href}J=J.split("#")[0].split("?")[0],J=J.substr(0,J.lastIndexOf("/")+1)}else if("undefined"!=typeof process&&process.cwd)J="file://"+(A?"/":"")+process.cwd()+"/",A&&(J=J.replace(/\\/g,"/"));else{if("undefined"==typeof location)throw new TypeError("No environment baseURI");J=e.location.href}var C=e.URLPolyfill||e.URL;F(r.prototype,"toString",{value:function(){return"Module"}}),function(){function o(e){return{status:"loading",name:e,linkSets:[],dependencies:[],metadata:{}}}function i(e,t,n){return new Promise(c({step:n.address?"fetch":"locate",loader:e,moduleName:t,moduleMetadata:n&&n.metadata||{},moduleSource:n.source,moduleAddress:n.address}))}function s(e,t,n,r){return new Promise(function(a,o){a(e.loaderObj.normalize(t,n,r))}).then(function(t){var n;if(e.modules[t])return n=o(t),n.status="linked",n.module=e.modules[t],n;for(var r=0,a=e.loads.length;a>r;r++)if(n=e.loads[r],n.name==t)return n;return n=o(t),e.loads.push(n),l(e,n),n})}function l(e,t){u(e,t,Promise.resolve().then(function(){return e.loaderObj.locate({name:t.name,metadata:t.metadata})}))}function u(e,t,n){d(e,t,n.then(function(n){return"loading"==t.status?(t.address=n,e.loaderObj.fetch({name:t.name,metadata:t.metadata,address:n})):void 0}))}function d(t,r,a){a.then(function(a){return"loading"==r.status?Promise.resolve(t.loaderObj.translate({name:r.name,metadata:r.metadata,address:r.address,source:a})).then(function(e){return r.source=e,t.loaderObj.instantiate({name:r.name,metadata:r.metadata,address:r.address,source:e})}).then(function(a){if(void 0===a)return r.address=r.address||"<Anonymous Module "+ ++_+">",r.isDeclarative=!0,E.call(t.loaderObj,r).then(function(t){var a=e.System,o=a.register;a.register=function(e,t,n){"string"!=typeof e&&(n=t,t=e),r.declare=n,r.depsList=t},n(t,r.address,{}),a.register=o});if("object"!=typeof a)throw TypeError("Invalid instantiate return value");r.depsList=a.deps||[],r.execute=a.execute,r.isDeclarative=!1}).then(function(){r.dependencies=[];for(var e=r.depsList,n=[],a=0,o=e.length;o>a;a++)(function(e,a){n.push(s(t,e,r.name,r.address).then(function(t){if(r.dependencies[a]={key:e,value:t.name},"linked"!=t.status)for(var n=r.linkSets.concat([]),o=0,i=n.length;i>o;o++)m(n[o],t)}))})(e[a],a);return Promise.all(n)}).then(function(){r.status="loaded";for(var e=r.linkSets.concat([]),t=0,n=e.length;n>t;t++)h(e[t],r)}):void 0})["catch"](function(e){r.status="failed",r.exception=e;for(var t=r.linkSets.concat([]),n=0,a=t.length;a>n;n++)g(t[n],r,e)})}function c(e){return function(t,n){var r=e.loader,a=e.moduleName,i=e.step;if(r.modules[a])throw new TypeError('"'+a+'" already exists in the module table');for(var s,c=0,m=r.loads.length;m>c;c++)if(r.loads[c].name==a&&(s=r.loads[c],"translate"!=i||s.source||(s.address=e.moduleAddress,d(r,s,Promise.resolve(e.moduleSource))),s.linkSets.length&&s.linkSets[0].loads[0].name==s.name))return s.linkSets[0].done.then(function(){t(s)});var p=s||o(a);p.metadata=e.moduleMetadata;var h=f(r,p);r.loads.push(p),t(h.done),"locate"==i?l(r,p):"fetch"==i?u(r,p,Promise.resolve(e.moduleAddress)):(p.address=e.moduleAddress,d(r,p,Promise.resolve(e.moduleSource)))}}function f(e,t){var n={loader:e,loads:[],startingLoad:t,loadingCount:0};return n.done=new Promise(function(e,t){n.resolve=e,n.reject=t}),m(n,t),n}function m(e,t){if("failed"!=t.status){for(var n=0,r=e.loads.length;r>n;n++)if(e.loads[n]==t)return;e.loads.push(t),t.linkSets.push(e),"loaded"!=t.status&&e.loadingCount++;for(var a=e.loader,n=0,r=t.dependencies.length;r>n;n++)if(t.dependencies[n]){var o=t.dependencies[n].value;if(!a.modules[o])for(var i=0,s=a.loads.length;s>i;i++)if(a.loads[i].name==o){m(e,a.loads[i]);break}}}}function p(e){var t=!1;try{w(e,function(n,r){g(e,n,r),t=!0})}catch(n){g(e,null,n),t=!0}return t}function h(e,t){if(e.loadingCount--,!(e.loadingCount>0)){var n=e.startingLoad;if(e.loader.loaderObj.execute===!1){for(var r=[].concat(e.loads),a=0,o=r.length;o>a;a++){var t=r[a];t.module=t.isDeclarative?{name:t.name,module:j({}),evaluated:!0}:{module:j({})},t.status="linked",v(e.loader,t)}return e.resolve(n)}var i=p(e);i||e.resolve(n)}}function g(e,n,r){var a=e.loader;e:if(n)if(e.loads[0].name==n.name)r=t(r,"Error loading "+n.name);else{for(var o=0;o<e.loads.length;o++)for(var i=e.loads[o],s=0;s<i.dependencies.length;s++){var l=i.dependencies[s];if(l.value==n.name){r=t(r,"Error loading "+n.name+' as "'+l.key+'" from '+i.name);break e}}r=t(r,"Error loading "+n.name+" from "+e.loads[0].name)}else r=t(r,"Error linking "+e.loads[0].name);for(var u=e.loads.concat([]),o=0,d=u.length;d>o;o++){var n=u[o];a.loaderObj.failed=a.loaderObj.failed||[],-1==D.call(a.loaderObj.failed,n)&&a.loaderObj.failed.push(n);var c=D.call(n.linkSets,e);if(n.linkSets.splice(c,1),0==n.linkSets.length){var f=D.call(e.loader.loads,n);-1!=f&&e.loader.loads.splice(f,1)}}e.reject(r)}function v(e,t){if(e.loaderObj.trace){e.loaderObj.loads||(e.loaderObj.loads={});var n={};t.dependencies.forEach(function(e){n[e.key]=e.value}),e.loaderObj.loads[t.name]={name:t.name,deps:t.dependencies.map(function(e){return e.key}),depMap:n,address:t.address,metadata:t.metadata,source:t.source,kind:t.isDeclarative?"declarative":"dynamic"}}t.name&&(e.modules[t.name]=t.module);var r=D.call(e.loads,t);-1!=r&&e.loads.splice(r,1);for(var a=0,o=t.linkSets.length;o>a;a++)r=D.call(t.linkSets[a].loads,t),-1!=r&&t.linkSets[a].loads.splice(r,1);t.linkSets.splice(0,t.linkSets.length)}function y(e,t,n){try{var a=t.execute()}catch(o){return void n(t,o)}return a&&a instanceof r?a:void n(t,new TypeError("Execution must define a Module instance"))}function b(e,t,n){var r=e._loader.importPromises;return r[t]=n.then(function(e){return r[t]=void 0,e},function(e){throw r[t]=void 0,e})}function w(e,t){var n=e.loader;if(e.loads.length)for(var r=e.loads.concat([]),a=0;a<r.length;a++){var o=r[a],i=y(e,o,t);if(!i)return;o.module={name:o.name,module:i},o.status="linked",v(n,o)}}function x(e,t){return t.module.module}function S(){}function E(){throw new TypeError("ES6 transpilation is only provided in the dev module loader build.")}var _=0;a.prototype={constructor:a,define:function(e,t,n){if(this._loader.importPromises[e])throw new TypeError("Module is already loading.");return b(this,e,new Promise(c({step:"translate",loader:this._loader,moduleName:e,moduleMetadata:n&&n.metadata||{},moduleSource:t,moduleAddress:n&&n.address})))},"delete":function(e){var t=this._loader;return delete t.importPromises[e],delete t.moduleRecords[e],t.modules[e]?delete t.modules[e]:!1},get:function(e){return this._loader.modules[e]?(S(this._loader.modules[e],[],this),this._loader.modules[e].module):void 0},has:function(e){return!!this._loader.modules[e]},"import":function(e,t,n){"object"==typeof t&&(t=t.name);var r=this;return Promise.resolve(r.normalize(e,t)).then(function(e){var t=r._loader;return t.modules[e]?(S(t.modules[e],[],t._loader),t.modules[e].module):t.importPromises[e]||b(r,e,i(t,e,{}).then(function(n){return delete t.importPromises[e],x(t,n)}))})},load:function(e){var t=this._loader;return t.modules[e]?Promise.resolve():t.importPromises[e]||b(this,e,new Promise(c({step:"locate",loader:t,moduleName:e,moduleMetadata:{},moduleSource:void 0,moduleAddress:void 0})).then(function(){delete t.importPromises[e]}))},module:function(e,t){var n=o();n.address=t&&t.address;var r=f(this._loader,n),a=Promise.resolve(e),i=this._loader,s=r.done.then(function(){return x(i,n)});return d(i,n,a),s},newModule:function(e){if("object"!=typeof e)throw new TypeError("Expected object");var t=new r,n=[];if(Object.getOwnPropertyNames&&null!=e)n=Object.getOwnPropertyNames(e);else for(var a in e)n.push(a);for(var o=0;o<n.length;o++)(function(n){F(t,n,{configurable:!1,enumerable:!0,get:function(){return e[n]},set:function(){throw new Error("Module exports cannot be changed externally.")}})})(n[o]);return Object.freeze&&Object.freeze(t),t},set:function(e,t){if(!(t instanceof r))throw new TypeError("Loader.set("+e+", module) must be a module");this._loader.modules[e]={module:t}},normalize:function(e,t,n){return e},locate:function(e){return e.name},fetch:function(e){},translate:function(e){return e.source},instantiate:function(e){}};var j=a.prototype.newModule}();var q;s.prototype=a.prototype,o.prototype=new s;var N;if("undefined"!=typeof XMLHttpRequest)N=function(e,t,n,r){function a(){n(i.responseText)}function o(){r(new Error("XHR error"+(i.status?" ("+i.status+(i.statusText?" "+i.statusText:"")+")":"")+" loading "+e))}var i=new XMLHttpRequest,s=!0,l=!1;if(!("withCredentials"in i)){var u=/^(\w+:)?\/\/([^\/]+)/.exec(e);u&&(s=u[2]===window.location.host,u[1]&&(s&=u[1]===window.location.protocol))}s||"undefined"==typeof XDomainRequest||(i=new XDomainRequest,i.onload=a,i.onerror=o,i.ontimeout=o,i.onprogress=function(){},i.timeout=0,l=!0),i.onreadystatechange=function(){4===i.readyState&&(0==i.status?i.responseText?a():(i.addEventListener("error",o),i.addEventListener("load",a)):200===i.status?a():o())},i.open("GET",e,!0),i.setRequestHeader&&(i.setRequestHeader("Accept","application/x-es-module, */*"),t&&("string"==typeof t&&i.setRequestHeader("Authorization",t),i.withCredentials=!0)),l?setTimeout(function(){i.send()},0):i.send(null)};else if("undefined"!="function"&&"undefined"!=typeof process){var $;N=function(e,t,n,r){if("file:///"!=e.substr(0,8))throw new Error('Unable to fetch "'+e+'". Only file URLs of the form file:/// allowed running in Node.');return $=$||__webpack_require__(33),e=A?e.replace(/\//g,"\\").substr(8):e.substr(7),$.readFile(e,function(e,t){if(e)return r(e);var a=t+"";"\ufeff"===a[0]&&(a=a.substr(1)),n(a)})}}else{if("undefined"==typeof self||"undefined"==typeof self.fetch)throw new TypeError("No environment fetch API available.");N=function(e,t,n,r){var a={headers:{Accept:"application/x-es-module, */*"}};t&&("string"==typeof t&&(a.headers.Authorization=t),a.credentials="include"),fetch(e,a).then(function(e){if(e.ok)return e.text();throw new Error("Fetch error: "+e.status+" "+e.statusText)}).then(n,r)}}o.prototype.fetch=function(e){return new Promise(function(t,n){N(e.address,void 0,t,n)})};var B=function(){function t(t){var r=this;return Promise.resolve(e["typescript"==r.transpiler?"ts":r.transpiler]||(r.pluginLoader||r)["import"](r.transpiler)).then(function(e){e.__useDefault&&(e=e["default"]);var a;return a=e.Compiler?n:e.createLanguageService?i:o,"(function(__moduleName){"+a.call(r,t,e)+'\n})("'+t.name+'");\n//# sourceURL='+t.address+"!transpiled"})}function n(e,t){var n=this.traceurOptions||{};n.modules="instantiate",n.script=!1,void 0===n.sourceMaps&&(n.sourceMaps="inline"),n.filename=e.address,n.inputSourceMap=e.metadata.sourceMap,n.moduleName=!1;var a=new t.Compiler(n);return r(e.source,a,n.filename)}function r(e,t,n){try{return t.compile(e,n)}catch(r){if(r.length)throw r[0];throw r}}function o(e,t){var n=this.babelOptions||{};return n.modules="system",void 0===n.sourceMap&&(n.sourceMap="inline"),n.inputSourceMap=e.metadata.sourceMap,n.filename=e.address,n.code=!0,n.ast=!1,t.transform(e.source,n).code}function i(e,t){var n=this.typescriptOptions||{};return n.target=n.target||t.ScriptTarget.ES5,void 0===n.sourceMap&&(n.sourceMap=!0),n.sourceMap&&n.inlineSourceMap!==!1&&(n.inlineSourceMap=!0),n.module=t.ModuleKind.System,t.transpile(e.source,n,e.address)}return a.prototype.transpiler="traceur",t}();u.prototype=o.prototype,l.prototype=new u,l.prototype.constructor=l,l.prototype.instantiate=function(){};var H,X=!0;try{Object.getOwnPropertyDescriptor({a:0},"a")}catch(Z){X=!1}var G,W=["main","format","defaultExtension","meta","map","basePath","depCache"];!function(){function n(e){var t=e.source.lastIndexOf("\n"),n="esm"==e.metadata.format||"register"==e.metadata.format||e.metadata.bundle,r=e.metadata.sourceMap;if(r){if("object"!=typeof r)throw new TypeError("load.metadata.sourceMap must be set to an object.");r.mappings&&(r.mappings=";"+r.mappings)}return r=JSON.stringify(r),(n?"(function(System, SystemJS) {":"")+("cjs"==e.metadata.format?e.source.replace(l,""):e.source)+(n?"\n})(System, System);":"")+("\n//# sourceURL="!=e.source.substr(t,15)?"\n//# sourceURL="+e.address+(r?"!transpiled":""):"")+(r&&s&&"\n//# sourceMappingURL=data:application/json;base64,"+btoa(unescape(encodeURIComponent(r)))||"")}function r(t,n){i=n,0==c++&&(u=e.System),e.System=e.SystemJS=t}function a(){0==--c&&(e.System=e.SystemJS=u),i=void 0}function o(e){p||(p=document.head||document.body||document.documentElement);var o=document.createElement("script");o.text=n(e,!1);var i,s=window.onerror;if(window.onerror=function(n){i=t(n,"Evaluating "+e.address)},r(this,e),e.metadata.integrity&&o.setAttribute("integrity",e.metadata.integrity),e.metadata.nonce&&o.setAttribute("nonce",e.metadata.nonce),p.appendChild(o),p.removeChild(o),a(),window.onerror=s,i)throw i}var i,s="undefined"!=typeof btoa,l=/^\#\!.*/;d("pushRegister_",function(){return function(e){return i?(this.reduceRegister_(i,e),!0):!1}});var u,c=0;G=function(e){if((e.metadata.integrity||e.metadata.nonce)&&f)return o.call(this,e);try{r(this,e),i=e,(0,eval)(n(e)),a()}catch(s){throw a(),t(s,"Evaluating "+e.address)}};var f=!1;if(L&&"undefined"!=typeof document&&document.getElementsByTagName){var m=document.getElementsByTagName("script");$__curScript=m[m.length-1],window.chrome&&window.chrome.extension||navigator.userAgent.match(/^Node\.js/)||(f=!0)}var p}();var V=/^[^\/]+:\/\//,K={},Y=new C(J);c(function(e){return function(){e.call(this),this.baseURL=J.substr(0,J.lastIndexOf("/")+1),this.map={},this.paths={},this.warnings=!1,this.defaultJSExtensions=!1,this.pluginFirst=!1,this.loaderErrorStack=!1,this.set("@empty",this.newModule({})),w.call(this,!1)}}),"undefined"=="function"||"undefined"==typeof process||process.browser||(l.prototype._nodeRequire=!(function webpackMissingModule() { var e = new Error("Cannot find module \".\""); e.code = 'MODULE_NOT_FOUND'; throw e; }()));var Q=["assert","buffer","child_process","cluster","console","constants","crypto","dgram","dns","domain","events","fs","http","https","module","net","os","path","process","punycode","querystring","readline","repl","stream","string_decoder","sys","timers","tls","tty","url","util","vm","zlib"];d("normalize",function(e){return function(e,t,n){var r=_.call(this,e,t);return n||!this.defaultJSExtensions||".js"==r.substr(r.length-3,3)||x(r)||(r+=".js"),r}});var ee="undefined"!=typeof XMLHttpRequest;d("locate",function(e){return function(t){return Promise.resolve(e.call(this,t)).then(function(e){return ee?e.replace(/#/g,"%23"):e})}}),d("fetch",function(){return function(e){return new Promise(function(t,n){N(e.address,e.metadata.authorization,t,n)})}}),d("import",function(e){return function(t,n,r){return n&&n.name&&g.call(this,"SystemJS.import(name, { name: parentName }) is deprecated for SystemJS.import(name, parentName), while importing "+t+" from "+n.name),e.call(this,t,n,r).then(function(e){return e.__useDefault?e["default"]:e})}}),d("translate",function(e){return function(t){return"detect"==t.metadata.format&&(t.metadata.format=void 0),e.call(this,t)}}),d("instantiate",function(e){return function(e){if("json"==e.metadata.format&&!this.builder){var t=e.metadata.entry=k();t.deps=[],t.execute=function(){try{return JSON.parse(e.source)}catch(t){throw new Error("Invalid JSON file "+e.name)}}}}}),l.prototype.env="development";var te;l.prototype.config=function(e){function t(e){for(var t in e)if(hasOwnProperty.call(e,t))return!0}var n=this;if("loaderErrorStack"in e&&(te=$__curScript,e.loaderErrorStack?$__curScript=void 0:$__curScript=te),"warnings"in e&&(n.warnings=e.warnings),e.transpilerRuntime===!1&&(n._loader.loadedTranspilerRuntime=!0),e.baseURL){if(t(n.packages)||t(n.meta)||t(n.depCache)||t(n.bundles)||t(n.packageConfigPaths))throw new TypeError("Incorrect configuration order. The baseURL must be configured with the first SystemJS.config call.");n.baseURL=e.baseURL,y.call(n)}if(e.defaultJSExtensions&&(n.defaultJSExtensions=e.defaultJSExtensions,g.call(n,"The defaultJSExtensions configuration option is deprecated, use packages configuration instead.")),e.pluginFirst&&(n.pluginFirst=e.pluginFirst),e.production&&w.call(n,!0),e.paths)for(var r in e.paths)n.paths[r]=e.paths[r];if(e.map){var a="";for(var r in e.map){var o=e.map[r];if("string"!=typeof o){a+=(a.length?", ":"")+'"'+r+'"';var i=n.defaultJSExtensions&&".js"!=r.substr(r.length-3,3),s=n.decanonicalize(r);i&&".js"==s.substr(s.length-3,3)&&(s=s.substr(0,s.length-3));var l="";for(var u in n.packages)s.substr(0,u.length)==u&&(!s[u.length]||"/"==s[u.length])&&l.split("/").length<u.split("/").length&&(l=u);l&&n.packages[l].main&&(s=s.substr(0,s.length-n.packages[l].main.length-1));var u=n.packages[s]=n.packages[s]||{};u.map=o}else n.map[r]=o}a&&g.call(n,"The map configuration for "+a+' uses object submaps, which is deprecated in global map.\nUpdate this to use package contextual map with configs like SystemJS.config({ packages: { "'+r+'": { map: {...} } } }).')}if(e.packageConfigPaths){for(var d=[],c=0;c<e.packageConfigPaths.length;c++){var f=e.packageConfigPaths[c],m=Math.max(f.lastIndexOf("*")+1,f.lastIndexOf("/")),i=n.defaultJSExtensions&&".js"!=f.substr(m-3,3),p=n.decanonicalize(f.substr(0,m));i&&".js"==p.substr(p.length-3,3)&&(p=p.substr(0,p.length-3)),d[c]=p+f.substr(m)}n.packageConfigPaths=d}if(e.bundles)for(var r in e.bundles){for(var v=[],c=0;c<e.bundles[r].length;c++){var i=n.defaultJSExtensions&&".js"!=e.bundles[r][c].substr(e.bundles[r][c].length-3,3),b=n.decanonicalize(e.bundles[r][c]);i&&".js"==b.substr(b.length-3,3)&&(b=b.substr(0,b.length-3)),v.push(b)}n.bundles[r]=v}if(e.packages)for(var r in e.packages){if(r.match(/^([^\/]+:)?\/\/$/))throw new TypeError('"'+r+'" is not a valid package name.');var s=_.call(n,r);"/"==s[s.length-1]&&(s=s.substr(0,s.length-1)),n.packages[s]=n.packages[s]||{};var u=e.packages[r];u.modules&&(g.call(n,"Package "+r+' is configured with "modules", which is deprecated as it has been renamed to "meta".'),u.meta=u.modules,delete u.modules),"object"==typeof u.main&&(u.map=u.map||{},u.map["./@main"]=u.main,u.main["default"]=u.main["default"]||"./",u.main="@main");for(var S in u)-1==D.call(W,S)&&g.call(n,'"'+S+'" is not a valid package configuration option in package '+r);h(n.packages[s],u)}for(var E in e){var o=e[E];if("baseURL"!=E&&"map"!=E&&"packages"!=E&&"bundles"!=E&&"paths"!=E&&"warnings"!=E&&"packageConfigPaths"!=E&&"loaderErrorStack"!=E)if("object"!=typeof o||o instanceof Array)n[E]=o;else{n[E]=n[E]||{};for(var r in o)if("meta"==E&&"*"==r[0])n[E][r]=o[r];else if("meta"==E){var j=_.call(n,r);n.defaultJSExtensions&&".js"!=j.substr(j.length-3,3)&&!x(j)&&(j+=".js"),n[E][j]=o[r]}else if("depCache"==E){var i=n.defaultJSExtensions&&".js"!=r.substr(r.length-3,3),s=n.decanonicalize(r);i&&".js"==s.substr(s.length-3,3)&&(s=s.substr(0,s.length-3)),n[E][s]=o[r]}else n[E][r]=o[r]}}},function(){function e(e,t){var n,r,a=0;for(var o in e.packages)t.substr(0,o.length)!==o||t.length!==o.length&&"/"!==t[o.length]||(r=o.split("/").length,r>a&&(n=o,a=r));return n}function t(e,t,n,r,a){if(!r||"/"==r[r.length-1]||a||t.defaultExtension===!1)return r;if(r.match(ae))return r;var o=!1;if(t.meta&&p(t.meta,r,function(e,t,n){return 0==n||e.lastIndexOf("*")!=e.length-1?o=!0:void 0}),!o&&e.meta&&p(e.meta,n+"/"+r,function(e,t,n){return 0==n||e.lastIndexOf("*")!=e.length-1?o=!0:void 0}),o)return r;var i="."+(t.defaultExtension||"js");return r.substr(r.length-i.length)!=i?r+i:r}function n(e,n,r,o,i){if(!o){if(!n.main)return r+(e.defaultJSExtensions?".js":"");o="./"==n.main.substr(0,2)?n.main.substr(2):n.main}if(n.map){var s="./"+o,l=b(n.map,s);if(l||(s="./"+t(e,n,r,o,i),s!="./"+o&&(l=b(n.map,s))),l)return a(e,n,r,l,s,i)}return r+"/"+t(e,n,r,o,i)}function r(e,t,n){if("."==e)throw new Error("Package "+n+' has a map entry for "." which is not permitted.');if(t.substr(0,e.length)==e&&"/"!=e[e.length-1]&&"/"==t[e.length])throw new Error("Package "+n+' has a recursive map for "'+e+'" which is not permitted.')}function a(e,n,a,o,i,s){var l=n.map[o];if(r(o,l,a),"string"!=typeof l&&(l=o=i),r(o,l,a),"."==l)l=a;else if("./"==l.substr(0,2))return a+"/"+t(e,n,a,l.substr(2)+i.substr(o.length),s);return e.normalizeSync(l+i.substr(o.length),a+"/")}function o(e,n,r,a,o){if(!a){if(!n.main)return Promise.resolve(r+(e.defaultJSExtensions?".js":""));a="./"==n.main.substr(0,2)?n.main.substr(2):n.main}var i,l;return n.map&&(i="./"+a,l=b(n.map,i),l||(i="./"+t(e,n,r,a,o),i!="./"+a&&(l=b(n.map,i)))),(l?s(e,n,r,l,i,o):Promise.resolve()).then(function(i){return i?Promise.resolve(i):Promise.resolve(r+"/"+t(e,n,r,a,o))})}function i(e,n,r,a,o,i,s){if("."==o)o=r;else if("./"==o.substr(0,2))return Promise.resolve(r+"/"+t(e,n,r,o.substr(2)+i.substr(a.length),s)).then(function(t){return z.call(e,t,r+"/")});return e.normalize(o+i.substr(a.length),r+"/")}function s(e,t,n,a,o,s){var l=t.map[a];return"string"==typeof l?(r(a,l,n),i(e,t,n,a,l,o,s)):e.builder?Promise.resolve(n+"/#:"+o):e["import"](t.map["@env"]||"@system-env",n).then(function(e){for(var t in l){var n="~"==t[0],r=v(n?t.substr(1):t,e);if(!n&&r||n&&!r)return l[t]}}).then(function(l){if(l){if("string"!=typeof l)throw new Error("Unable to map a package conditional to a package conditional.");return r(a,l,n),i(e,t,n,a,l,o,s)}})}function u(e){var t=e.lastIndexOf("*"),n=Math.max(t+1,e.lastIndexOf("/"));return{length:n,regEx:new RegExp("^("+e.substr(0,n).replace(/\*/g,"[^\\/]+")+")(\\/|$)"),wildcard:-1!=t}}function f(e,t){for(var n,r,a=!1,o=0;o<e.packageConfigPaths.length;o++){var i=e.packageConfigPaths[o],s=y[i]||(y[i]=u(i));if(!(t.length<s.length)){var l=t.match(s.regEx);!l||n&&(a&&s.wildcard||!(n.length<l[1].length))||(n=l[1],a=!s.wildcard,r=n+i.substr(s.length))}}return n?{packageName:n,configPath:r}:void 0}function m(e,t,n){var r=e.pluginLoader||e;return(r.meta[n]=r.meta[n]||{}).format="json",r.load(n).then(function(){var a=r.get(n)["default"];a.systemjs&&(a=a.systemjs),a.modules&&(a.meta=a.modules,g.call(e,"Package config file "+n+' is configured with "modules", which is deprecated as it has been renamed to "meta".'));for(var o in a)-1==D.call(W,o)&&delete a[o];var i=e.packages[t]=e.packages[t]||{};if(h(i,a,!0),a.depCache){for(var s in a.depCache){var l;l="./"==s.substr(0,2)?t+"/"+s.substr(2):_.call(e,s),e.depCache[l]=(e.depCache[l]||[]).concat(a.depCache[s])}delete a.depCache}return"object"==typeof i.main&&(i.map=i.map||{},i.map["./@main"]=i.main,i.main["default"]=i.main["default"]||"./",i.main="@main"),i})}function p(e,t,n){var r;for(var a in e){var o="./"==a.substr(0,2)?"./":"";if(o&&(a=a.substr(2)),r=a.indexOf("*"),-1!==r&&a.substr(0,r)==t.substr(0,r)&&a.substr(r+1)==t.substr(t.length-a.length+r+1)&&n(a,e[o+a],a.split("/").length))return}var i=e[t]||e["./"+t];i&&n(i,i,0)}c(function(e){return function(){e.call(this),this.packages={},this.packageConfigPaths=[]}}),l.prototype.normalizeSync=l.prototype.decanonicalize=l.prototype.normalize,d("decanonicalize",function(t){return function(n,r){if(this.builder)return t.call(this,n,r,!0);var a=t.call(this,n,r);if(!this.defaultJSExtensions)return a;var o=e(this,a),i=this.packages[o],s=i&&i.defaultExtension;return void 0==s&&i&&i.meta&&p(i.meta,a.substr(o),function(e,t,n){return 0==n||e.lastIndexOf("*")!=e.length-1?(s=!1,!0):void 0}),(s===!1||s&&".js"!=s)&&".js"!=n.substr(n.length-3,3)&&".js"==a.substr(a.length-3,3)&&(a=a.substr(0,a.length-3)),a}}),d("normalizeSync",function(t){return function(r,o,i){g.call(this,"SystemJS.normalizeSync has been deprecated for SystemJS.decanonicalize.");var s=this;if(i=i===!0,o)var l=e(s,o)||s.defaultJSExtensions&&".js"==o.substr(o.length-3,3)&&e(s,o.substr(0,o.length-3));var u=l&&s.packages[l];if(u&&"."!=r[0]){var d=u.map,c=d&&b(d,r);if(c&&"string"==typeof d[c])return a(s,u,l,c,r,i)}var m=s.defaultJSExtensions&&".js"!=r.substr(r.length-3,3),p=t.call(s,r,o);m&&".js"!=p.substr(p.length-3,3)&&(m=!1),m&&(p=p.substr(0,p.length-3));var h=f(s,p),v=h&&h.packageName||e(s,p);if(!v)return p+(m?".js":"");var y=p.substr(v.length+1);return n(s,s.packages[v]||{},v,y,i)}}),d("normalize",function(t){return function(n,r,a){var i=this;return a=a===!0,Promise.resolve().then(function(){if(r)var t=e(i,r)||i.defaultJSExtensions&&".js"==r.substr(r.length-3,3)&&e(i,r.substr(0,r.length-3));var o=t&&i.packages[t];if(o&&"./"!=n.substr(0,2)){var l=o.map,u=l&&b(l,n);if(u)return s(i,o,t,u,n,a)}return Promise.resolve()}).then(function(s){if(s)return s;var l=i.defaultJSExtensions&&".js"!=n.substr(n.length-3,3),u=t.call(i,n,r);l&&".js"!=u.substr(u.length-3,3)&&(l=!1),l&&(u=u.substr(0,u.length-3));var d=f(i,u),c=d&&d.packageName||e(i,u);if(!c)return Promise.resolve(u+(l?".js":""));var p=i.packages[c],h=p&&(p.configured||!d);return(h?Promise.resolve(p):m(i,c,d.configPath)).then(function(e){var t=u.substr(c.length+1);return o(i,e,c,t,a)})})}});var y={};d("locate",function(t){return function(n){var r=this;return Promise.resolve(t.call(this,n)).then(function(t){var a=e(r,n.name);if(a){var o=r.packages[a],i=n.name.substr(a.length+1);o.format&&(n.metadata.format=n.metadata.format||o.format);var s={};if(o.meta){var l=0;p(o.meta,i,function(e,t,n){n>l&&(l=n),h(s,t,n&&l>n)}),h(n.metadata,s)}}return t})}})}(),function(){function t(){if(o&&"interactive"===o.script.readyState)return o.load;for(var e=0;e<l.length;e++)if("interactive"==l[e].script.readyState)return o=l[e],o.load}function n(e,t){return new Promise(function(e,n){t.metadata.integrity&&n(new Error("Subresource integrity checking is not supported in web workers.")),i=t;try{importScripts(t.address)}catch(r){i=null,n(r)}i=null,t.metadata.entry||n(new Error(t.address+" did not call System.register or AMD define")),e("")})}if("undefined"!=typeof document)var r=document.getElementsByTagName("head")[0];var a,o,i=null,s=r&&function(){var e=document.createElement("script"),t="undefined"!=typeof opera&&"[object Opera]"===opera.toString();return e.attachEvent&&!(e.attachEvent.toString&&e.attachEvent.toString().indexOf("[native code")<0)&&!t}(),l=[],u=0,c=[];d("pushRegister_",function(e){return function(n){return e.call(this,n)?!1:(i?this.reduceRegister_(i,n):s?this.reduceRegister_(t(),n):u?c.push(n):this.reduceRegister_(null,n),
 	!0)}}),d("fetch",function(t){return function(i){var d=this;return"json"!=i.metadata.format&&i.metadata.scriptLoad&&(L||I)?I?n(d,i):new Promise(function(t,n){function f(e){if(!h.readyState||"loaded"==h.readyState||"complete"==h.readyState){if(u--,i.metadata.entry||c.length){if(!s){for(var r=0;r<c.length;r++)d.reduceRegister_(i,c[r]);c=[]}}else d.reduceRegister_(i);p(),i.metadata.entry||i.metadata.bundle||n(new Error(i.name+" did not call System.register or AMD define. If loading a global module configure the global name via the meta exports property for script injection support.")),t("")}}function m(e){p(),n(new Error("Unable to load script "+i.address))}function p(){if(e.System=a,h.detachEvent){h.detachEvent("onreadystatechange",f);for(var t=0;t<l.length;t++)l[t].script==h&&(o&&o.script==h&&(o=null),l.splice(t,1))}else h.removeEventListener("load",f,!1),h.removeEventListener("error",m,!1);r.removeChild(h)}var h=document.createElement("script");h.async=!0,i.metadata.crossOrigin&&(h.crossOrigin=i.metadata.crossOrigin),i.metadata.integrity&&h.setAttribute("integrity",i.metadata.integrity),s?(h.attachEvent("onreadystatechange",f),l.push({script:h,load:i})):(h.addEventListener("load",f,!1),h.addEventListener("error",m,!1)),u++,a=e.System,h.src=i.address,r.appendChild(h)}):t.call(this,i)}})}();var ne=/^(\s*\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*|\s*"[^"]+"\s*;?|\s*'[^']+'\s*;?)*\s*/;!function(){function t(e,n,r){if(r[e.groupIndex]=r[e.groupIndex]||[],-1==D.call(r[e.groupIndex],e)){r[e.groupIndex].push(e);for(var a=0,o=e.normalizedDeps.length;o>a;a++){var i=e.normalizedDeps[a],s=n.defined[i];if(s&&!s.evaluated){var l=e.groupIndex+(s.declarative!=e.declarative);if(null===s.groupIndex||s.groupIndex<l){if(null!==s.groupIndex&&(r[s.groupIndex].splice(D.call(r[s.groupIndex],s),1),0==r[s.groupIndex].length))throw new Error("Mixed dependency cycle detected");s.groupIndex=l}t(s,n,r)}}}}function n(e,n){var r=n.defined[e];if(!r.module){r.groupIndex=0;var a=[];t(r,n,a);for(var o=!!r.declarative==a.length%2,s=a.length-1;s>=0;s--){for(var l=a[s],d=0;d<l.length;d++){var c=l[d];o?i(c,n):u(c,n)}o=!o}}}function a(){}function o(e,t){return t[e]||(t[e]={name:e,dependencies:[],exports:new a,importers:[]})}function i(t,n){if(!t.module){var r=n._loader.moduleRecords,a=t.module=o(t.name,r),s=t.module.exports,l=t.declare.call(e,function(e,t){if(a.locked=!0,"object"==typeof e)for(var n in e)s[n]=e[n];else s[e]=t;for(var r=0,o=a.importers.length;o>r;r++){var i=a.importers[r];if(!i.locked){var l=D.call(i.dependencies,a);i.setters[l](s)}}return a.locked=!1,t},{id:t.name});if(a.setters=l.setters,a.execute=l.execute,!a.setters||!a.execute)throw new TypeError("Invalid System.register form for "+t.name);for(var u=0,d=t.normalizedDeps.length;d>u;u++){var c,f=t.normalizedDeps[u],m=n.defined[f],p=r[f];p?c=p.exports:m&&!m.declarative?c=m.esModule:m?(i(m,n),p=m.module,c=p.exports):c=n.get(f),p&&p.importers?(p.importers.push(a),a.dependencies.push(p)):a.dependencies.push(null);for(var h=t.originalIndices[u],g=0,v=h.length;v>g;++g){var y=h[g];a.setters[y]&&a.setters[y](c)}}}}function s(e,t){var n,r=t.defined[e];if(r)r.declarative?p(e,[],t):r.evaluated||u(r,t),n=r.module.exports;else if(n=t.get(e),!n)throw new Error("Unable to load dependency "+e+".");return(!r||r.declarative)&&n&&n.__useDefault?n["default"]:n}function u(t,n){if(!t.module){var a={},o=t.module={exports:a,id:t.name};if(!t.executingRequire)for(var i=0,l=t.normalizedDeps.length;l>i;i++){var d=t.normalizedDeps[i],c=n.defined[d];c&&u(c,n)}t.evaluated=!0;var f=t.execute.call(e,function(e){for(var r=0,a=t.deps.length;a>r;r++)if(t.deps[r]==e)return s(t.normalizedDeps[r],n);var o=n.normalizeSync(e,t.name);if(-1!=D.call(t.normalizedDeps,o))return s(o,n);throw new Error("Module "+e+" not declared as a dependency of "+t.name)},a,o);f&&(o.exports=f),a=o.exports,a&&(a.__esModule||a instanceof r)?t.esModule=a:t.esmExports&&a!==e?t.esModule=m(a):t.esModule={"default":a}}}function p(t,n,r){var a=r.defined[t];if(a&&!a.evaluated&&a.declarative){n.push(t);for(var o=0,i=a.normalizedDeps.length;i>o;o++){var s=a.normalizedDeps[o];-1==D.call(n,s)&&(r.defined[s]?p(s,n,r):r.get(s))}a.evaluated||(a.evaluated=!0,a.module.execute.call(e))}}l.prototype.register=function(e,t,n){if("string"!=typeof e&&(n=t,t=e,e=null),"boolean"==typeof n)return this.registerDynamic.apply(this,arguments);var r=k();r.name=e&&(this.decanonicalize||this.normalize).call(this,e),r.declarative=!0,r.deps=t,r.declare=n,this.pushRegister_({amd:!1,entry:r})},l.prototype.registerDynamic=function(e,t,n,r){"string"!=typeof e&&(r=n,n=t,t=e,e=null);var a=k();a.name=e&&(this.decanonicalize||this.normalize).call(this,e),a.deps=t,a.execute=r,a.executingRequire=n,this.pushRegister_({amd:!1,entry:a})},d("reduceRegister_",function(){return function(e,t){if(t){var n=t.entry,r=e&&e.metadata;if(n.name&&(n.name in this.defined||(this.defined[n.name]=n),r&&(r.bundle=!0)),!n.name||e&&n.name==e.name){if(!r)throw new TypeError("Unexpected anonymous System.register call.");if(r.entry)throw"register"==r.format?new Error("Multiple anonymous System.register calls in module "+e.name+". If loading a bundle, ensure all the System.register calls are named."):new Error("Module "+e.name+" interpreted as "+r.format+" module format, but called System.register.");r.format||(r.format="register"),r.entry=n}}}}),c(function(e){return function(){e.call(this),this.defined={},this._loader.moduleRecords={}}}),F(a,"toString",{value:function(){return"Module"}}),d("delete",function(e){return function(t){return delete this._loader.moduleRecords[t],delete this.defined[t],e.call(this,t)}}),d("fetch",function(e){return function(t){return this.defined[t.name]?(t.metadata.format="defined",""):(t.metadata.deps=t.metadata.deps||[],e.call(this,t))}}),d("translate",function(e){return function(t){return t.metadata.deps=t.metadata.deps||[],Promise.resolve(e.call(this,t)).then(function(e){return("register"==t.metadata.format||!t.metadata.format&&j(t.source))&&(t.metadata.format="register"),e})}}),d("instantiate",function(e){return function(t){"detect"==t.metadata.format&&(t.metadata.format=void 0),e.call(this,t);var r,a=this;if(a.defined[t.name])r=a.defined[t.name],r.declarative||(r.deps=r.deps.concat(t.metadata.deps));else if(t.metadata.entry)r=t.metadata.entry,r.deps=r.deps.concat(t.metadata.deps);else if(!(a.builder&&t.metadata.bundle||"register"!=t.metadata.format&&"esm"!=t.metadata.format&&"es6"!=t.metadata.format)){if("undefined"!=typeof G&&G.call(a,t),!t.metadata.entry&&!t.metadata.bundle)throw new Error(t.name+" detected as "+t.metadata.format+" but didn't execute.");r=t.metadata.entry,r&&t.metadata.deps&&(r.deps=r.deps.concat(t.metadata.deps))}r||(r=k(),r.deps=t.metadata.deps,r.execute=function(){}),a.defined[t.name]=r;var o=f(r.deps);r.deps=o.names,r.originalIndices=o.indices,r.name=t.name,r.esmExports=t.metadata.esmExports!==!1;for(var i=[],s=0,l=r.deps.length;l>s;s++)i.push(Promise.resolve(a.normalize(r.deps[s],t.name)));return Promise.all(i).then(function(e){return r.normalizedDeps=e,{deps:r.deps,execute:function(){return n(t.name,a),p(t.name,[],a),a.defined[t.name]=void 0,a.newModule(r.declarative?r.module.exports:r.esModule)}}})}})}(),function(){var t=/(^\s*|[}\);\n]\s*)(import\s*(['"]|(\*\s+as\s+)?[^"'\(\)\n;]+\s*from\s*['"]|\{)|export\s+\*\s+from\s+["']|export\s*(\{|default|function|class|var|const|let|async\s+function))/,n=/\$traceurRuntime\s*\./,r=/babelHelpers\s*\./;d("translate",function(a){return function(o){var i=this;return a.call(i,o).then(function(a){if("esm"==o.metadata.format||"es6"==o.metadata.format||!o.metadata.format&&a.match(t)){if("es6"==o.metadata.format&&g.call(i,"Module "+o.name+' has metadata setting its format to "es6", which is deprecated.\nThis should be updated to "esm".'),o.metadata.format="esm",i.transpiler===!1){if(i.builder)return a;throw new TypeError("Unable to dynamically transpile ES module as SystemJS.transpiler set to false.")}return i._loader.loadedTranspiler=i._loader.loadedTranspiler||!1,i.pluginLoader&&(i.pluginLoader._loader.loadedTranspiler=i._loader.loadedTranspiler||!1),(i._loader.transpilerPromise||(i._loader.transpilerPromise=Promise.resolve(e["typescript"==i.transpiler?"ts":i.transpiler]||(i.pluginLoader||i)["import"](i.transpiler)))).then(function(e){return i._loader.loadedTranspilerRuntime=!0,e.translate?e==o.metadata.loaderModule?o.source:("string"==typeof o.metadata.sourceMap&&(o.metadata.sourceMap=JSON.parse(o.metadata.sourceMap)),Promise.resolve(e.translate.call(i,o)).then(function(e){var t=o.metadata.sourceMap;if(t&&"object"==typeof t){var n=o.name.split("!")[0];t.file=n+"!transpiled",(!t.sources||t.sources.length<=1)&&(t.sources=[n])}return"esm"==o.metadata.format&&!i.builder&&j(e)&&(o.metadata.format="register"),e})):(i.builder&&(o.metadata.originalSource=o.source),B.call(i,o).then(function(e){return o.metadata.sourceMap=void 0,e}))})}if(i.transpiler===!1)return a;if(i._loader.loadedTranspiler!==!1||"traceur"!=i.transpiler&&"typescript"!=i.transpiler&&"babel"!=i.transpiler||o.name!=i.normalizeSync(i.transpiler)||(a.length>100&&!o.metadata.format&&(o.metadata.format="global","traceur"===i.transpiler&&(o.metadata.exports="traceur"),"typescript"===i.transpiler&&(o.metadata.exports="ts")),i._loader.loadedTranspiler=!0),i._loader.loadedTranspilerRuntime===!1&&(o.name==i.normalizeSync("traceur-runtime")||o.name==i.normalizeSync("babel/external-helpers*"))&&(a.length>100&&(o.metadata.format=o.metadata.format||"global"),i._loader.loadedTranspilerRuntime=!0),("register"==o.metadata.format||o.metadata.bundle)&&i._loader.loadedTranspilerRuntime!==!0){if(!e.$traceurRuntime&&o.source.match(n))return i._loader.loadedTranspilerRuntime=i._loader.loadedTranspilerRuntime||!1,i["import"]("traceur-runtime").then(function(){return a});if(!e.babelHelpers&&o.source.match(r))return i._loader.loadedTranspilerRuntime=i._loader.loadedTranspilerRuntime||!1,i["import"]("babel/external-helpers").then(function(){return a})}return a})}})}();var re="undefined"!=typeof self?"self":"global";d("fetch",function(e){return function(t){return t.metadata.exports&&!t.metadata.format&&(t.metadata.format="global"),e.call(this,t)}}),d("instantiate",function(e){return function(t){var n=this;if(t.metadata.format||(t.metadata.format="global"),"global"==t.metadata.format&&!t.metadata.registered){var r=k();t.metadata.entry=r,r.deps=[];for(var a in t.metadata.globals){var o=t.metadata.globals[a];o&&r.deps.push(o)}r.execute=function(e,r,a){var o;if(t.metadata.globals){o={};for(var i in t.metadata.globals)t.metadata.globals[i]&&(o[i]=e(t.metadata.globals[i]))}var s=t.metadata.exports;s&&(t.source+="\n"+re+'["'+s+'"] = '+s+";");var l=n.get("@@global-helpers").prepareGlobal(a.id,s,o);return G.call(n,t),l()}}return e.call(this,t)}}),d("reduceRegister_",function(e){return function(t,n){if(n||!t.metadata.exports)return e.call(this,t,n);t.metadata.format="global";var r=t.metadata.entry=k();r.deps=t.metadata.deps;var a=P(t.metadata.exports);r.execute=function(){return a}}}),c(function(t){return function(){function n(t){if(Object.keys)Object.keys(e).forEach(t);else for(var n in e)i.call(e,n)&&t(n)}function r(t){n(function(n){if(-1==D.call(s,n)){try{var r=e[n]}catch(a){s.push(n)}t(n,r)}})}var a=this;t.call(a);var o,i=Object.prototype.hasOwnProperty,s=["_g","sessionStorage","localStorage","clipboardData","frames","frameElement","external","mozAnimationStartTime","webkitStorageInfo","webkitIndexedDB","mozInnerScreenY","mozInnerScreenX"];a.set("@@global-helpers",a.newModule({prepareGlobal:function(t,n,a){var i=e.define;e.define=void 0;var s;if(a){s={};for(var l in a)s[l]=e[l],e[l]=a[l]}return n||(o={},r(function(e,t){o[e]=t})),function(){var t;if(n)t=P(n);else{t={};var a,l;r(function(e,n){o[e]!==n&&"undefined"!=typeof n&&(t[e]=n,"undefined"!=typeof a?l||a===n||(l=!0):a=n)}),t=l?t:a}if(s)for(var u in s)e[u]=s[u];return e.define=i,t}}}))}}),function(){function t(e){function t(e,t){for(var n=0;n<e.length;n++)if(e[n][0]<t.index&&e[n][1]>t.index)return!0;return!1}r.lastIndex=a.lastIndex=o.lastIndex=0;var n,i=[],s=[],l=[];if(e.length/e.split("\n").length<200){for(;n=o.exec(e);)s.push([n.index,n.index+n[0].length]);for(;n=a.exec(e);)t(s,n)||l.push([n.index,n.index+n[0].length])}for(;n=r.exec(e);)if(!t(s,n)&&!t(l,n)){var u=n[1].substr(1,n[1].length-2);if(u.match(/"|'/))continue;"/"==u[u.length-1]&&(u=u.substr(0,u.length-1)),i.push(u)}return i}var n=/(?:^\uFEFF?|[^$_a-zA-Z\xA0-\uFFFF.])(exports\s*(\[['"]|\.)|module(\.exports|\['exports'\]|\["exports"\])\s*(\[['"]|[=,\.]))/,r=/(?:^\uFEFF?|[^$_a-zA-Z\xA0-\uFFFF."'])require\s*\(\s*("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')\s*\)/g,a=/(^|[^\\])(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/gm,o=/("[^"\\\n\r]*(\\.[^"\\\n\r]*)*"|'[^'\\\n\r]*(\\.[^'\\\n\r]*)*')/g;d("instantiate",function(a){return function(o){var i=this;if(o.metadata.format||(n.lastIndex=0,r.lastIndex=0,(r.exec(o.source)||n.exec(o.source))&&(o.metadata.format="cjs")),"cjs"==o.metadata.format){var s=o.metadata.deps,l=o.metadata.cjsRequireDetection===!1?[]:t(o.source);for(var u in o.metadata.globals)o.metadata.globals[u]&&l.push(o.metadata.globals[u]);var d=k();o.metadata.entry=d,d.deps=l,d.executingRequire=!0,d.execute=function(t,n,r){function a(e){return"/"==e[e.length-1]&&(e=e.substr(0,e.length-1)),t.apply(this,arguments)}if(a.resolve=function(e){return i.get("@@cjs-helpers").requireResolve(e,r.id)},!o.metadata.cjsDeferDepsExecute)for(var l=0;l<s.length;l++)a(s[l]);var u=i.get("@@cjs-helpers").getPathVars(r.id),d={exports:n,args:[a,n,r,u.filename,u.dirname,e,e]},c="(function(require, exports, module, __filename, __dirname, global, GLOBAL";if(o.metadata.globals)for(var f in o.metadata.globals)d.args.push(a(o.metadata.globals[f])),c+=", "+f;var m=e.define;e.define=void 0,e.__cjsWrapper=d,o.source=c+") {"+o.source+"\n}).apply(__cjsWrapper.exports, __cjsWrapper.args);",G.call(i,o),e.__cjsWrapper=void 0,e.define=m}}return a.call(i,o)}})}(),c(function(e){return function(){function t(e){return"file:///"==e.substr(0,8)?e.substr(7+!!A):r&&e.substr(0,r.length)==r?e.substr(r.length):e}var n=this;if(e.call(n),"undefined"!=typeof window&&"undefined"!=typeof document&&window.location)var r=location.protocol+"//"+location.hostname+(location.port?":"+location.port:"");n.set("@@cjs-helpers",n.newModule({requireResolve:function(e,r){return t(n.normalizeSync(e,r))},getPathVars:function(e){var n,r=e.lastIndexOf("!");n=-1!=r?e.substr(0,r):e;var a=n.split("/");return a.pop(),a=a.join("/"),{filename:t(n),dirname:t(a)}}}))}}),d("fetch",function(t){return function(n){return n.metadata.scriptLoad&&L&&(e.define=this.amdDefine),t.call(this,n)}}),c(function(t){return function(){function n(e,t){e=e.replace(i,"");var n=e.match(u),r=(n[1].split(",")[t]||"require").replace(c,""),a=f[r]||(f[r]=new RegExp(s+r+l,"g"));a.lastIndex=0;for(var o,d=[];o=a.exec(e);)d.push(o[2]||o[3]);return d}function r(e,t,n,a){if("object"==typeof e&&!(e instanceof Array))return r.apply(null,Array.prototype.splice.call(arguments,1,arguments.length-1));if("string"==typeof e&&"function"==typeof t&&(e=[e]),!(e instanceof Array)){if("string"==typeof e){var i=o.defaultJSExtensions&&".js"!=e.substr(e.length-3,3),s=o.decanonicalize(e,a);i&&".js"==s.substr(s.length-3,3)&&(s=s.substr(0,s.length-3));var l=o.get(s);if(!l)throw new Error('Module not already loaded loading "'+e+'" as '+s+(a?' from "'+a+'".':"."));return l.__useDefault?l["default"]:l}throw new TypeError("Invalid require")}for(var u=[],d=0;d<e.length;d++)u.push(o["import"](e[d],a));Promise.all(u).then(function(e){t&&t.apply(null,e)},n)}function a(t,a,i){function s(t,n,s){function c(e,n,a){return"string"==typeof e&&"function"!=typeof n?t(e):r.call(o,e,n,a,s.id)}for(var f=[],m=0;m<a.length;m++)f.push(t(a[m]));s.uri=s.id,s.config=function(){},-1!=d&&f.splice(d,0,s),-1!=u&&f.splice(u,0,n),-1!=l&&(c.toUrl=function(e){var t=o.defaultJSExtensions&&".js"!=e.substr(e.length-3,3),n=o.decanonicalize(e,s.id);return t&&".js"==n.substr(n.length-3,3)&&(n=n.substr(0,n.length-3)),n},f.splice(l,0,c));var p=e.require;e.require=r;var h=i.apply(-1==u?e:n,f);return e.require=p,"undefined"==typeof h&&s&&(h=s.exports),"undefined"!=typeof h?h:void 0}"string"!=typeof t&&(i=a,a=t,t=null),a instanceof Array||(i=a,a=["require","exports","module"].splice(0,i.length)),"function"!=typeof i&&(i=function(e){return function(){return e}}(i)),void 0===a[a.length-1]&&a.pop();var l,u,d;-1!=(l=D.call(a,"require"))&&(a.splice(l,1),t||(a=a.concat(n(i.toString(),l)))),-1!=(u=D.call(a,"exports"))&&a.splice(u,1),-1!=(d=D.call(a,"module"))&&a.splice(d,1);var c=k();c.name=t&&(o.decanonicalize||o.normalize).call(o,t),c.deps=a,c.execute=s,o.pushRegister_({amd:!0,entry:c})}var o=this;t.call(this);var i=/(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/gm,s="(?:^|[^$_a-zA-Z\\xA0-\\uFFFF.])",l="\\s*\\(\\s*(\"([^\"]+)\"|'([^']+)')\\s*\\)",u=/\(([^\)]*)\)/,c=/^\s+|\s+$/g,f={};a.amd={},d("reduceRegister_",function(e){return function(t,n){if(!n||!n.amd)return e.call(this,t,n);var r=t&&t.metadata,a=n.entry;if(r&&(r.format="amd"),a.name)r&&(r.entry||r.bundle?r.entry&&r.entry.name&&(r.entry=void 0):r.entry=a,r.bundle=!0),a.name in this.defined||(this.defined[a.name]=a);else{if(!r)throw new TypeError("Unexpected anonymous AMD define.");if(r.entry&&!r.entry.name)throw new Error("Multiple anonymous defines in module "+t.name);r.entry=a}}}),o.amdDefine=a,o.amdRequire=r}}),function(){var t=/(?:^\uFEFF?|[^$_a-zA-Z\xA0-\uFFFF.])define\s*\(\s*("[^"]+"\s*,\s*|'[^']+'\s*,\s*)?\s*(\[(\s*(("[^"]+"|'[^']+')\s*,|\/\/.*\r?\n|\/\*(.|\s)*?\*\/))*(\s*("[^"]+"|'[^']+')\s*,?)?(\s*(\/\/.*\r?\n|\/\*(.|\s)*?\*\/))*\s*\]|function\s*|{|[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*\))/;d("instantiate",function(n){return function(r){var a=this;if("amd"==r.metadata.format||!r.metadata.format&&r.source.match(t))if(r.metadata.format="amd",a.builder||a.execute===!1)r.metadata.execute=function(){return r.metadata.builderExecute.apply(this,arguments)};else{var o=e.define;e.define=this.amdDefine;try{G.call(a,r)}finally{e.define=o}if(!r.metadata.entry&&!r.metadata.bundle)throw new TypeError("AMD module "+r.name+" did not define")}return n.call(a,r)}})}(),function(){function e(e,t){if(t){var n;if(e.pluginFirst){if(-1!=(n=t.lastIndexOf("!")))return t.substr(n+1)}else if(-1!=(n=t.indexOf("!")))return t.substr(0,n);return t}}function t(e,t){var n,r,a=t.lastIndexOf("!");return-1!=a?(e.pluginFirst?(n=t.substr(a+1),r=t.substr(0,a)):(n=t.substr(0,a),r=t.substr(a+1)||n.substr(n.lastIndexOf(".")+1)),{argument:n,plugin:r}):void 0}function n(e,t,n,r){return r&&".js"==t.substr(t.length-3,3)&&(t=t.substr(0,t.length-3)),e.pluginFirst?n+"!"+t:t+"!"+n}function r(e,t){return e.defaultJSExtensions&&".js"!=t.substr(t.length-3,3)}function a(a){return function(o,i,s){var l=this;i=e(this,i);var u=t(l,o);if(!u)return a.call(this,o,i,s);var d=l.normalizeSync(u.argument,i,!0),c=l.normalizeSync(u.plugin,i,!0);return n(l,d,c,r(l,u.argument))}}d("decanonicalize",a),d("normalizeSync",a),d("normalize",function(a){return function(o,i,s){var l=this;i=e(this,i);var u=t(l,o);return u?Promise.all([l.normalize(u.argument,i,!0),l.normalize(u.plugin,i)]).then(function(e){return n(l,e[0],e[1],r(l,u.argument))}):a.call(l,o,i,s)}}),d("locate",function(e){return function(t){var n,r=this,a=t.name;return r.pluginFirst?-1!=(n=a.indexOf("!"))&&(t.metadata.loader=a.substr(0,n),t.name=a.substr(n+1)):-1!=(n=a.lastIndexOf("!"))&&(t.metadata.loader=a.substr(n+1),t.name=a.substr(0,n)),e.call(r,t).then(function(e){return-1==n&&t.metadata.loader?r.normalize(t.metadata.loader,t.name).then(function(n){return t.metadata.loader=n,e}):e}).then(function(e){var n=t.metadata.loader;if(!n)return e;if(t.name==n)throw new Error("Plugin "+n+" cannot load itself, make sure it is excluded from any wildcard meta configuration via a custom loader: false rule.");if(r.defined&&r.defined[a])return e;var o=r.pluginLoader||r;return o["import"](n).then(function(n){return t.metadata.loaderModule=n,t.address=e,n.locate?n.locate.call(r,t):e})})}}),d("fetch",function(e){return function(t){var n=this;return t.metadata.loaderModule&&t.metadata.loaderModule.fetch&&"defined"!=t.metadata.format?(t.metadata.scriptLoad=!1,t.metadata.loaderModule.fetch.call(n,t,function(t){return e.call(n,t)})):e.call(n,t)}}),d("translate",function(e){return function(t){var n=this;return t.metadata.loaderModule&&t.metadata.loaderModule.translate&&"defined"!=t.metadata.format?Promise.resolve(t.metadata.loaderModule.translate.call(n,t)).then(function(r){var a=t.metadata.sourceMap;if(a){if("object"!=typeof a)throw new Error("load.metadata.sourceMap must be set to an object.");var o=t.name.split("!")[0];a.file=o+"!transpiled",(!a.sources||a.sources.length<=1)&&(a.sources=[o])}return"string"==typeof r?t.source=r:g.call(this,"Plugin "+t.metadata.loader+" should return the source in translate, instead of setting load.source directly. This support will be deprecated."),e.call(n,t)}):e.call(n,t)}}),d("instantiate",function(e){return function(t){var n=this,r=!1;return t.metadata.loaderModule&&t.metadata.loaderModule.instantiate&&!n.builder&&"defined"!=t.metadata.format?Promise.resolve(t.metadata.loaderModule.instantiate.call(n,t,function(t){if(r)throw new Error("Instantiate must only be called once.");return r=!0,e.call(n,t)})).then(function(a){return r?a:(t.metadata.entry=k(),t.metadata.entry.execute=function(){return a},t.metadata.entry.deps=t.metadata.deps,t.metadata.format="defined",e.call(n,t))}):e.call(n,t)}})}();var ae=/#\{[^\}]+\}/;d("normalize",function(e){return function(t,n,r){var a=this;return T.call(a,t,n).then(function(t){return e.call(a,t,n,r)}).then(function(e){return z.call(a,e,n)})}}),function(){d("fetch",function(e){return function(t){var n=t.metadata.alias,r=t.metadata.deps||[];if(n){t.metadata.format="defined";var a=k();return this.defined[t.name]=a,a.declarative=!0,a.deps=r.concat([n]),a.declare=function(e){return{setters:[function(t){for(var n in t)e(n,t[n]);t.__useDefault&&(a.module.exports.__useDefault=!0)}],execute:function(){}}},""}return e.call(this,t)}})}(),function(){function e(e,t,n){for(var r,a=t.split(".");a.length>1;)r=a.shift(),e=e[r]=e[r]||{};r=a.shift(),r in e||(e[r]=n)}c(function(e){return function(){this.meta={},e.call(this)}}),d("locate",function(e){return function(t){var n,r=this.meta,a=t.name,o=0;for(var i in r)if(n=i.indexOf("*"),-1!==n&&i.substr(0,n)===a.substr(0,n)&&i.substr(n+1)===a.substr(a.length-i.length+n+1)){var s=i.split("/").length;s>o&&(o=s),h(t.metadata,r[i],o!=s)}return r[a]&&h(t.metadata,r[a]),e.call(this,t)}});var t=/^(\s*\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\s*\/\/[^\n]*|\s*"[^"]+"\s*;?|\s*'[^']+'\s*;?)+/,n=/\/\*[^\*]*(\*(?!\/)[^\*]*)*\*\/|\/\/[^\n]*|"[^"]+"\s*;?|'[^']+'\s*;?/g;d("translate",function(r){return function(a){var o=a.source.match(t);if(o)for(var i=o[0].match(n),s=0;s<i.length;s++){var l=i[s],u=l.length,d=l.substr(0,1);if(";"==l.substr(u-1,1)&&u--,'"'==d||"'"==d){var c=l.substr(1,l.length-3),f=c.substr(0,c.indexOf(" "));if(f){var m=c.substr(f.length+1,c.length-f.length-1);"[]"==f.substr(f.length-2,2)?(f=f.substr(0,f.length-2),a.metadata[f]=a.metadata[f]||[],a.metadata[f].push(m)):a.metadata[f]instanceof Array?(g.call(this,"Module "+a.name+' contains deprecated "deps '+m+'" meta syntax.\nThis should be updated to "deps[] '+m+'" for pushing to array meta.'),a.metadata[f].push(m)):e(a.metadata,f,m)}else a.metadata[c]=!0}}return r.call(this,a)}})}(),function(){c(function(e){return function(){e.call(this),this.bundles={},this._loader.loadedBundles={}}}),d("locate",function(e){return function(t){var n=this,r=!1;if(!(t.name in n.defined))for(var a in n.bundles){for(var o=0;o<n.bundles[a].length;o++){var i=n.bundles[a][o];if(i==t.name){r=!0;break}if(-1!=i.indexOf("*")){var s=i.split("*");if(2!=s.length){n.bundles[a].splice(o--,1);continue}if(t.name.substring(0,s[0].length)==s[0]&&t.name.substr(t.name.length-s[1].length,s[1].length)==s[1]&&-1==t.name.substr(s[0].length,t.name.length-s[1].length-s[0].length).indexOf("/")){r=!0;break}}}if(r)return n["import"](a).then(function(){return e.call(n,t)})}return e.call(n,t)}})}(),function(){c(function(e){return function(){e.call(this),this.depCache={}}}),d("locate",function(e){return function(t){var n=this,r=n.depCache[t.name];if(r)for(var a=0;a<r.length;a++)n["import"](r[a],t.name);return e.call(n,t)}})}(),q=new l,e.SystemJS=q,q.version="0.19.24 Standard","object"==typeof exports&&(module.exports=a),e.Reflect=e.Reflect||{},e.Reflect.Loader=e.Reflect.Loader||a,e.Reflect.global=e.Reflect.global||e,e.LoaderPolyfill=a,q||(q=new o,q.constructor=o),"object"==typeof exports&&(module.exports=q),e.System=q}("undefined"!=typeof self?self:global)}try{var t="undefined"!=typeof URLPolyfill||"test:"==new URL("test:///").protocol}catch(n){}var r="undefined"==typeof Promise||!t;if("undefined"!=typeof document){var a=document.getElementsByTagName("script");if($__curScript=a[a.length-1],r){var o=$__curScript.src,i=o.substr(0,o.lastIndexOf("/")+1);window.systemJSBootstrap=e,document.write('<script type="text/javascript" src="'+i+'system-polyfills.js"></script>')}else e()}else if("undefined"!=typeof importScripts){var i="";try{throw new Error("_")}catch(n){n.stack.replace(/(?:at|@).*(http.+):[\d]+:[\d]+/,function(e,t){$__curScript={src:t},i=t.replace(/\/[^\/]*$/,"/")})}r&&importScripts(i+"system-polyfills.js"),e()}else $__curScript= true?{src:__filename}:null,e()}();
 	//# sourceMappingURL=system.js.map
 
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(20), "/index.js"))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(22), "/index.js"))
 
 /***/ },
-/* 31 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(32)
-	  , pathm = __webpack_require__(33)
-	  , fs = __webpack_require__(34);
+	var utils = __webpack_require__(34)
+	  , pathm = __webpack_require__(35)
+	  , fs = __webpack_require__(36);
 
 	var wrapSuccess = utils.wrapSuccess
 	  , wrapFail = utils.wrapFail;
@@ -62415,7 +63147,7 @@
 
 
 /***/ },
-/* 32 */
+/* 34 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -62495,7 +63227,7 @@
 
 
 /***/ },
-/* 33 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -62723,16 +63455,16 @@
 	    }
 	;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
 
 /***/ },
-/* 34 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var utils = __webpack_require__(32)
-	  , pathm = __webpack_require__(33);
+	var utils = __webpack_require__(34)
+	  , pathm = __webpack_require__(35);
 
 	var DEFAULT_QUOTA = (10 * 1024 * 1024); // 10MB
 
@@ -62953,7 +63685,7 @@
 
 
 /***/ },
-/* 35 */
+/* 37 */
 /***/ function(module, exports) {
 
 	function webpackContext(req) {
@@ -62962,18 +63694,19 @@
 	webpackContext.keys = function() { return []; };
 	webpackContext.resolve = webpackContext;
 	module.exports = webpackContext;
-	webpackContext.id = 35;
+	webpackContext.id = 37;
 
 
 /***/ },
-/* 36 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	__webpack_require__(37);
+	__webpack_require__(39);
 
-	var _ = __webpack_require__(39);
+	var _ = __webpack_require__(41);
+	var search = __webpack_require__(43);
 
 	var newPkg = () => {
 		return {
@@ -62983,8 +63716,13 @@
 		};
 	};
 
-	var PackageFinder = function (scope, state) {
+	var PackageFinder = function (scope, state, mdSidenav) {
 		this.state = state;
+		this.mdSidenav = mdSidenav;
+		this.scope = scope;
+
+		this.docsOpen = true;
+
 		this.new = newPkg();
 		this.shouldGen = true;
 
@@ -62995,6 +63733,23 @@
 
 		state.subscribe(() => update);
 		update();
+	};
+
+	PackageFinder.prototype.toggleDocs = function () {
+		this.docsOpen = !this.docsOpen;
+	};
+
+	var throttleSearch = _.throttle(search.autocomplete, 250);
+
+	PackageFinder.prototype.search = function (name) {
+		return throttleSearch(name);
+	};
+
+	PackageFinder.prototype.pickPackage = function (pkg) {
+		this.new.name = this.selectedPackage.name + ' ' + this.selectedPackage.version;
+		this.new.alias = this.selectedPackage.alias || this.selectedPackage.name;
+		this.new.path = this.selectedPackage.path;
+		this.shouldGen = false;
 	};
 
 	PackageFinder.prototype.updateName = function () {
@@ -63027,13 +63782,13 @@
 	module.exports = PackageFinder;
 
 /***/ },
-/* 37 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// style-loader: Adds some css to the DOM by adding a <style> tag
 
 	// load the styles
-	var content = __webpack_require__(38);
+	var content = __webpack_require__(40);
 	if(typeof content === 'string') content = [[module.id, content, '']];
 	// add the styles to the DOM
 	var update = __webpack_require__(7)(content, {});
@@ -63053,7 +63808,7 @@
 	}
 
 /***/ },
-/* 38 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
 	exports = module.exports = __webpack_require__(5)();
@@ -63061,13 +63816,13 @@
 
 
 	// module
-	exports.push([module.id, ".package-finder .subhead {\n  margin-left: 0.5em;\n  color: grey;\n  font-size: 0.75em;\n}\n.package-finder .add-package > h4 {\n  margin-bottom: 0.25em;\n}\n.package-finder .package-list md-checkbox + p {\n  display: inline-block;\n  -webkit-transform: translate(0, -0.35em);\n          transform: translate(0, -0.35em);\n}\n.package-finder .package-list md-checkbox + p .subhead {\n  text-overflow: ellipsis;\n}\n", ""]);
+	exports.push([module.id, ".package-finder .subhead {\n  margin-left: 0.5em;\n  color: grey;\n  font-size: 0.75em;\n}\n.package-finder .add-package > h4 {\n  margin-bottom: 0.25em;\n}\n.package-finder .package-list md-checkbox {\n  min-width: 30px;\n}\n.package-finder .package-list md-checkbox + p {\n  display: inline-block;\n  -webkit-transform: translate(0, -0.35em);\n          transform: translate(0, -0.35em);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.package-finder .package-list md-checkbox + p .subhead {\n  text-overflow: ellipsis;\n}\n.docs-window {\n  height: 100%;\n  width: 40%;\n  overflow: hidden;\n  -webkit-transition: width 500ms ease-out;\n  transition: width 500ms ease-out;\n}\n.docs-window.hidden {\n  width: 0.1px;\n}\n.shrink-25 {\n  width: 133%;\n  height: 133%;\n  -webkit-transform-origin: top left;\n          transform-origin: top left;\n  -webkit-transform: scale(0.75, 0.75);\n          transform: scale(0.75, 0.75);\n}\n.shrink-50 {\n  width: 200%;\n  height: 200%;\n  -webkit-transform-origin: top left;\n          transform-origin: top left;\n  -webkit-transform: scale(0.5, 0.5);\n          transform: scale(0.5, 0.5);\n}\n.package em {\n  font-weight: bold;\n  color: blue;\n}\n", ""]);
 
 	// exports
 
 
 /***/ },
-/* 39 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(module, global) {/**
@@ -78144,10 +78899,10 @@
 	  }
 	}.call(this));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(40)(module), (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(42)(module), (function() { return this; }())))
 
 /***/ },
-/* 40 */
+/* 42 */
 /***/ function(module, exports) {
 
 	module.exports = function(module) {
@@ -78163,10 +78918,4815 @@
 
 
 /***/ },
-/* 41 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var jade = __webpack_require__(42);
+	'use strict';
+
+	var rest = __webpack_require__(44);
+	var mime = __webpack_require__(72);
+
+	var client = rest.wrap(mime, { mime: 'application/json' });
+
+	var parseAlgolia = doc => {
+		return Object.assign({
+			path: `https://cdnjs.cloudflare.com/ajax/libs/${ doc.name }/${ doc.version }/${ doc.filename }`,
+			alias: doc.namespace
+		}, doc);
+	};
+
+	var autocomplete = str => client({
+		path: 'https://2qwlvlxzb6-dsn.algolia.net/1/indexes/libraries/query',
+		method: 'POST',
+		params: {
+			'x-algolia-api-key': '2663c73014d2e4d6d1778cc8ad9fd010',
+			'x-algolia-application-id': '2QWLVLXZB6'
+		},
+		entity: {
+			params: "query=" + str
+		}
+	}).then(res => res.entity.hits.map(parseAlgolia));
+
+	module.exports = {
+		autocomplete
+	};
+
+/***/ },
+/* 44 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var rest = __webpack_require__(45),
+			    browser = __webpack_require__(48);
+
+			rest.setPlatformDefaultClient(browser);
+
+			return rest;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 45 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		var undef;
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			/**
+			 * Plain JS Object containing properties that represent an HTTP request.
+			 *
+			 * Depending on the capabilities of the underlying client, a request
+			 * may be cancelable. If a request may be canceled, the client will add
+			 * a canceled flag and cancel function to the request object. Canceling
+			 * the request will put the response into an error state.
+			 *
+			 * @field {string} [method='GET'] HTTP method, commonly GET, POST, PUT, DELETE or HEAD
+			 * @field {string|UrlBuilder} [path=''] path template with optional path variables
+			 * @field {Object} [params] parameters for the path template and query string
+			 * @field {Object} [headers] custom HTTP headers to send, in addition to the clients default headers
+			 * @field [entity] the HTTP entity, common for POST or PUT requests
+			 * @field {boolean} [canceled] true if the request has been canceled, set by the client
+			 * @field {Function} [cancel] cancels the request if invoked, provided by the client
+			 * @field {Client} [originator] the client that first handled this request, provided by the interceptor
+			 *
+			 * @class Request
+			 */
+
+			/**
+			 * Plain JS Object containing properties that represent an HTTP response
+			 *
+			 * @field {Object} [request] the request object as received by the root client
+			 * @field {Object} [raw] the underlying request object, like XmlHttpRequest in a browser
+			 * @field {number} [status.code] status code of the response (i.e. 200, 404)
+			 * @field {string} [status.text] status phrase of the response
+			 * @field {Object] [headers] response headers hash of normalized name, value pairs
+			 * @field [entity] the response body
+			 *
+			 * @class Response
+			 */
+
+			/**
+			 * HTTP client particularly suited for RESTful operations.
+			 *
+			 * @field {function} wrap wraps this client with a new interceptor returning the wrapped client
+			 *
+			 * @param {Request} the HTTP request
+			 * @returns {ResponsePromise<Response>} a promise the resolves to the HTTP response
+			 *
+			 * @class Client
+			 */
+
+			 /**
+			  * Extended when.js Promises/A+ promise with HTTP specific helpers
+			  *q
+			  * @method entity promise for the HTTP entity
+			  * @method status promise for the HTTP status code
+			  * @method headers promise for the HTTP response headers
+			  * @method header promise for a specific HTTP response header
+			  *
+			  * @class ResponsePromise
+			  * @extends Promise
+			  */
+
+			var client, target, platformDefault;
+
+			client = __webpack_require__(46);
+
+			/**
+			 * Make a request with the default client
+			 * @param {Request} the HTTP request
+			 * @returns {Promise<Response>} a promise the resolves to the HTTP response
+			 */
+			function defaultClient() {
+				return target.apply(undef, arguments);
+			}
+
+			/**
+			 * Change the default client
+			 * @param {Client} client the new default client
+			 */
+			defaultClient.setDefaultClient = function setDefaultClient(client) {
+				target = client;
+			};
+
+			/**
+			 * Obtain a direct reference to the current default client
+			 * @returns {Client} the default client
+			 */
+			defaultClient.getDefaultClient = function getDefaultClient() {
+				return target;
+			};
+
+			/**
+			 * Reset the default client to the platform default
+			 */
+			defaultClient.resetDefaultClient = function resetDefaultClient() {
+				target = platformDefault;
+			};
+
+			/**
+			 * @private
+			 */
+			defaultClient.setPlatformDefaultClient = function setPlatformDefaultClient(client) {
+				if (platformDefault) {
+					throw new Error('Unable to redefine platformDefaultClient');
+				}
+				target = platformDefault = client;
+			};
+
+			return client(defaultClient);
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 46 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			/**
+			 * Add common helper methods to a client impl
+			 *
+			 * @param {function} impl the client implementation
+			 * @param {Client} [target] target of this client, used when wrapping other clients
+			 * @returns {Client} the client impl with additional methods
+			 */
+			return function client(impl, target) {
+
+				if (target) {
+
+					/**
+					 * @returns {Client} the target client
+					 */
+					impl.skip = function skip() {
+						return target;
+					};
+
+				}
+
+				/**
+				 * Allow a client to easily be wrapped by an interceptor
+				 *
+				 * @param {Interceptor} interceptor the interceptor to wrap this client with
+				 * @param [config] configuration for the interceptor
+				 * @returns {Client} the newly wrapped client
+				 */
+				impl.wrap = function wrap(interceptor, config) {
+					return interceptor(impl, config);
+				};
+
+				/**
+				 * @deprecated
+				 */
+				impl.chain = function chain() {
+					if (typeof console !== 'undefined') {
+						console.log('rest.js: client.chain() is deprecated, use client.wrap() instead');
+					}
+
+					return impl.wrap.apply(this, arguments);
+				};
+
+				return impl;
+
+			};
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 47 */
+/***/ function(module, exports) {
+
+	module.exports = function() { throw new Error("define cannot be used indirect"); };
+
+
+/***/ },
+/* 48 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define, global) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var when, UrlBuilder, normalizeHeaderName, responsePromise, client, headerSplitRE;
+
+			when = __webpack_require__(49);
+			UrlBuilder = __webpack_require__(68);
+			normalizeHeaderName = __webpack_require__(70);
+			responsePromise = __webpack_require__(71);
+			client = __webpack_require__(46);
+
+			// according to the spec, the line break is '\r\n', but doesn't hold true in practice
+			headerSplitRE = /[\r|\n]+/;
+
+			function parseHeaders(raw) {
+				// Note: Set-Cookie will be removed by the browser
+				var headers = {};
+
+				if (!raw) { return headers; }
+
+				raw.trim().split(headerSplitRE).forEach(function (header) {
+					var boundary, name, value;
+					boundary = header.indexOf(':');
+					name = normalizeHeaderName(header.substring(0, boundary).trim());
+					value = header.substring(boundary + 1).trim();
+					if (headers[name]) {
+						if (Array.isArray(headers[name])) {
+							// add to an existing array
+							headers[name].push(value);
+						}
+						else {
+							// convert single value to array
+							headers[name] = [headers[name], value];
+						}
+					}
+					else {
+						// new, single value
+						headers[name] = value;
+					}
+				});
+
+				return headers;
+			}
+
+			function safeMixin(target, source) {
+				Object.keys(source || {}).forEach(function (prop) {
+					// make sure the property already exists as
+					// IE 6 will blow up if we add a new prop
+					if (source.hasOwnProperty(prop) && prop in target) {
+						try {
+							target[prop] = source[prop];
+						}
+						catch (e) {
+							// ignore, expected for some properties at some points in the request lifecycle
+						}
+					}
+				});
+
+				return target;
+			}
+
+			return client(function xhr(request) {
+				return responsePromise.promise(function (resolve, reject) {
+					/*jshint maxcomplexity:20 */
+
+					var client, method, url, headers, entity, headerName, response, XMLHttpRequest;
+
+					request = typeof request === 'string' ? { path: request } : request || {};
+					response = { request: request };
+
+					if (request.canceled) {
+						response.error = 'precanceled';
+						reject(response);
+						return;
+					}
+
+					entity = request.entity;
+					request.method = request.method || (entity ? 'POST' : 'GET');
+					method = request.method;
+					url = response.url = new UrlBuilder(request.path || '', request.params).build();
+
+					XMLHttpRequest = request.engine || global.XMLHttpRequest;
+					if (!XMLHttpRequest) {
+						reject({ request: request, url: url, error: 'xhr-not-available' });
+						return;
+					}
+
+					try {
+						client = response.raw = new XMLHttpRequest();
+
+						// mixin extra request properties before and after opening the request as some properties require being set at different phases of the request
+						safeMixin(client, request.mixin);
+						client.open(method, url, true);
+						safeMixin(client, request.mixin);
+
+						headers = request.headers;
+						for (headerName in headers) {
+							/*jshint forin:false */
+							if (headerName === 'Content-Type' && headers[headerName] === 'multipart/form-data') {
+								// XMLHttpRequest generates its own Content-Type header with the
+								// appropriate multipart boundary when sending multipart/form-data.
+								continue;
+							}
+
+							client.setRequestHeader(headerName, headers[headerName]);
+						}
+
+						request.canceled = false;
+						request.cancel = function cancel() {
+							request.canceled = true;
+							client.abort();
+							reject(response);
+						};
+
+						client.onreadystatechange = function (/* e */) {
+							if (request.canceled) { return; }
+							if (client.readyState === (XMLHttpRequest.DONE || 4)) {
+								response.status = {
+									code: client.status,
+									text: client.statusText
+								};
+								response.headers = parseHeaders(client.getAllResponseHeaders());
+								response.entity = client.responseText;
+
+								if (response.status.code > 0) {
+									// check status code as readystatechange fires before error event
+									resolve(response);
+								}
+								else {
+									// give the error callback a chance to fire before resolving
+									// requests for file:// URLs do not have a status code
+									setTimeout(function () {
+										resolve(response);
+									}, 0);
+								}
+							}
+						};
+
+						try {
+							client.onerror = function (/* e */) {
+								response.error = 'loaderror';
+								reject(response);
+							};
+						}
+						catch (e) {
+							// IE 6 will not support error handling
+						}
+
+						client.send(entity);
+					}
+					catch (e) {
+						response.error = 'loaderror';
+						reject(response);
+					}
+
+				});
+			});
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47),
+		typeof window !== 'undefined' ? window : void 0
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 49 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+
+	/**
+	 * Promises/A+ and when() implementation
+	 * when is part of the cujoJS family of libraries (http://cujojs.com/)
+	 * @author Brian Cavalier
+	 * @author John Hann
+	 */
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+		var timed = __webpack_require__(50);
+		var array = __webpack_require__(54);
+		var flow = __webpack_require__(57);
+		var fold = __webpack_require__(58);
+		var inspect = __webpack_require__(59);
+		var generate = __webpack_require__(60);
+		var progress = __webpack_require__(61);
+		var withThis = __webpack_require__(62);
+		var unhandledRejection = __webpack_require__(63);
+		var TimeoutError = __webpack_require__(53);
+
+		var Promise = [array, flow, fold, generate, progress,
+			inspect, withThis, timed, unhandledRejection]
+			.reduce(function(Promise, feature) {
+				return feature(Promise);
+			}, __webpack_require__(65));
+
+		var apply = __webpack_require__(56)(Promise);
+
+		// Public API
+
+		when.promise     = promise;              // Create a pending promise
+		when.resolve     = Promise.resolve;      // Create a resolved promise
+		when.reject      = Promise.reject;       // Create a rejected promise
+
+		when.lift        = lift;                 // lift a function to return promises
+		when['try']      = attempt;              // call a function and return a promise
+		when.attempt     = attempt;              // alias for when.try
+
+		when.iterate     = Promise.iterate;      // DEPRECATED (use cujojs/most streams) Generate a stream of promises
+		when.unfold      = Promise.unfold;       // DEPRECATED (use cujojs/most streams) Generate a stream of promises
+
+		when.join        = join;                 // Join 2 or more promises
+
+		when.all         = all;                  // Resolve a list of promises
+		when.settle      = settle;               // Settle a list of promises
+
+		when.any         = lift(Promise.any);    // One-winner race
+		when.some        = lift(Promise.some);   // Multi-winner race
+		when.race        = lift(Promise.race);   // First-to-settle race
+
+		when.map         = map;                  // Array.map() for promises
+		when.filter      = filter;               // Array.filter() for promises
+		when.reduce      = lift(Promise.reduce);       // Array.reduce() for promises
+		when.reduceRight = lift(Promise.reduceRight);  // Array.reduceRight() for promises
+
+		when.isPromiseLike = isPromiseLike;      // Is something promise-like, aka thenable
+
+		when.Promise     = Promise;              // Promise constructor
+		when.defer       = defer;                // Create a {promise, resolve, reject} tuple
+
+		// Error types
+
+		when.TimeoutError = TimeoutError;
+
+		/**
+		 * Get a trusted promise for x, or by transforming x with onFulfilled
+		 *
+		 * @param {*} x
+		 * @param {function?} onFulfilled callback to be called when x is
+		 *   successfully fulfilled.  If promiseOrValue is an immediate value, callback
+		 *   will be invoked immediately.
+		 * @param {function?} onRejected callback to be called when x is
+		 *   rejected.
+		 * @param {function?} onProgress callback to be called when progress updates
+		 *   are issued for x. @deprecated
+		 * @returns {Promise} a new promise that will fulfill with the return
+		 *   value of callback or errback or the completion value of promiseOrValue if
+		 *   callback and/or errback is not supplied.
+		 */
+		function when(x, onFulfilled, onRejected, onProgress) {
+			var p = Promise.resolve(x);
+			if (arguments.length < 2) {
+				return p;
+			}
+
+			return p.then(onFulfilled, onRejected, onProgress);
+		}
+
+		/**
+		 * Creates a new promise whose fate is determined by resolver.
+		 * @param {function} resolver function(resolve, reject, notify)
+		 * @returns {Promise} promise whose fate is determine by resolver
+		 */
+		function promise(resolver) {
+			return new Promise(resolver);
+		}
+
+		/**
+		 * Lift the supplied function, creating a version of f that returns
+		 * promises, and accepts promises as arguments.
+		 * @param {function} f
+		 * @returns {Function} version of f that returns promises
+		 */
+		function lift(f) {
+			return function() {
+				for(var i=0, l=arguments.length, a=new Array(l); i<l; ++i) {
+					a[i] = arguments[i];
+				}
+				return apply(f, this, a);
+			};
+		}
+
+		/**
+		 * Call f in a future turn, with the supplied args, and return a promise
+		 * for the result.
+		 * @param {function} f
+		 * @returns {Promise}
+		 */
+		function attempt(f /*, args... */) {
+			/*jshint validthis:true */
+			for(var i=0, l=arguments.length-1, a=new Array(l); i<l; ++i) {
+				a[i] = arguments[i+1];
+			}
+			return apply(f, this, a);
+		}
+
+		/**
+		 * Creates a {promise, resolver} pair, either or both of which
+		 * may be given out safely to consumers.
+		 * @return {{promise: Promise, resolve: function, reject: function, notify: function}}
+		 */
+		function defer() {
+			return new Deferred();
+		}
+
+		function Deferred() {
+			var p = Promise._defer();
+
+			function resolve(x) { p._handler.resolve(x); }
+			function reject(x) { p._handler.reject(x); }
+			function notify(x) { p._handler.notify(x); }
+
+			this.promise = p;
+			this.resolve = resolve;
+			this.reject = reject;
+			this.notify = notify;
+			this.resolver = { resolve: resolve, reject: reject, notify: notify };
+		}
+
+		/**
+		 * Determines if x is promise-like, i.e. a thenable object
+		 * NOTE: Will return true for *any thenable object*, and isn't truly
+		 * safe, since it may attempt to access the `then` property of x (i.e.
+		 *  clever/malicious getters may do weird things)
+		 * @param {*} x anything
+		 * @returns {boolean} true if x is promise-like
+		 */
+		function isPromiseLike(x) {
+			return x && typeof x.then === 'function';
+		}
+
+		/**
+		 * Return a promise that will resolve only once all the supplied arguments
+		 * have resolved. The resolution value of the returned promise will be an array
+		 * containing the resolution values of each of the arguments.
+		 * @param {...*} arguments may be a mix of promises and values
+		 * @returns {Promise}
+		 */
+		function join(/* ...promises */) {
+			return Promise.all(arguments);
+		}
+
+		/**
+		 * Return a promise that will fulfill once all input promises have
+		 * fulfilled, or reject when any one input promise rejects.
+		 * @param {array|Promise} promises array (or promise for an array) of promises
+		 * @returns {Promise}
+		 */
+		function all(promises) {
+			return when(promises, Promise.all);
+		}
+
+		/**
+		 * Return a promise that will always fulfill with an array containing
+		 * the outcome states of all input promises.  The returned promise
+		 * will only reject if `promises` itself is a rejected promise.
+		 * @param {array|Promise} promises array (or promise for an array) of promises
+		 * @returns {Promise} promise for array of settled state descriptors
+		 */
+		function settle(promises) {
+			return when(promises, Promise.settle);
+		}
+
+		/**
+		 * Promise-aware array map function, similar to `Array.prototype.map()`,
+		 * but input array may contain promises or values.
+		 * @param {Array|Promise} promises array of anything, may contain promises and values
+		 * @param {function(x:*, index:Number):*} mapFunc map function which may
+		 *  return a promise or value
+		 * @returns {Promise} promise that will fulfill with an array of mapped values
+		 *  or reject if any input promise rejects.
+		 */
+		function map(promises, mapFunc) {
+			return when(promises, function(promises) {
+				return Promise.map(promises, mapFunc);
+			});
+		}
+
+		/**
+		 * Filter the provided array of promises using the provided predicate.  Input may
+		 * contain promises and values
+		 * @param {Array|Promise} promises array of promises and values
+		 * @param {function(x:*, index:Number):boolean} predicate filtering predicate.
+		 *  Must return truthy (or promise for truthy) for items to retain.
+		 * @returns {Promise} promise that will fulfill with an array containing all items
+		 *  for which predicate returned truthy.
+		 */
+		function filter(promises, predicate) {
+			return when(promises, function(promises) {
+				return Promise.filter(promises, predicate);
+			});
+		}
+
+		return when;
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	})(__webpack_require__(47));
+
+
+/***/ },
+/* 50 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) {
+
+		var env = __webpack_require__(51);
+		var TimeoutError = __webpack_require__(53);
+
+		function setTimeout(f, ms, x, y) {
+			return env.setTimer(function() {
+				f(x, y, ms);
+			}, ms);
+		}
+
+		return function timed(Promise) {
+			/**
+			 * Return a new promise whose fulfillment value is revealed only
+			 * after ms milliseconds
+			 * @param {number} ms milliseconds
+			 * @returns {Promise}
+			 */
+			Promise.prototype.delay = function(ms) {
+				var p = this._beget();
+				this._handler.fold(handleDelay, ms, void 0, p._handler);
+				return p;
+			};
+
+			function handleDelay(ms, x, h) {
+				setTimeout(resolveDelay, ms, x, h);
+			}
+
+			function resolveDelay(x, h) {
+				h.resolve(x);
+			}
+
+			/**
+			 * Return a new promise that rejects after ms milliseconds unless
+			 * this promise fulfills earlier, in which case the returned promise
+			 * fulfills with the same value.
+			 * @param {number} ms milliseconds
+			 * @param {Error|*=} reason optional rejection reason to use, defaults
+			 *   to a TimeoutError if not provided
+			 * @returns {Promise}
+			 */
+			Promise.prototype.timeout = function(ms, reason) {
+				var p = this._beget();
+				var h = p._handler;
+
+				var t = setTimeout(onTimeout, ms, reason, p._handler);
+
+				this._handler.visit(h,
+					function onFulfill(x) {
+						env.clearTimer(t);
+						this.resolve(x); // this = h
+					},
+					function onReject(x) {
+						env.clearTimer(t);
+						this.reject(x); // this = h
+					},
+					h.notify);
+
+				return p;
+			};
+
+			function onTimeout(reason, h, ms) {
+				var e = typeof reason === 'undefined'
+					? new TimeoutError('timed out after ' + ms + 'ms')
+					: reason;
+				h.reject(e);
+			}
+
+			return Promise;
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 51 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;var require;/* WEBPACK VAR INJECTION */(function(process) {/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	/*global process,document,setTimeout,clearTimeout,MutationObserver,WebKitMutationObserver*/
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) {
+		/*jshint maxcomplexity:6*/
+
+		// Sniff "best" async scheduling option
+		// Prefer process.nextTick or MutationObserver, then check for
+		// setTimeout, and finally vertx, since its the only env that doesn't
+		// have setTimeout
+
+		var MutationObs;
+		var capturedSetTimeout = typeof setTimeout !== 'undefined' && setTimeout;
+
+		// Default env
+		var setTimer = function(f, ms) { return setTimeout(f, ms); };
+		var clearTimer = function(t) { return clearTimeout(t); };
+		var asap = function (f) { return capturedSetTimeout(f, 0); };
+
+		// Detect specific env
+		if (isNode()) { // Node
+			asap = function (f) { return process.nextTick(f); };
+
+		} else if (MutationObs = hasMutationObserver()) { // Modern browser
+			asap = initMutationObserver(MutationObs);
+
+		} else if (!capturedSetTimeout) { // vert.x
+			var vertxRequire = require;
+			var vertx = __webpack_require__(52);
+			setTimer = function (f, ms) { return vertx.setTimer(ms, f); };
+			clearTimer = vertx.cancelTimer;
+			asap = vertx.runOnLoop || vertx.runOnContext;
+		}
+
+		return {
+			setTimer: setTimer,
+			clearTimer: clearTimer,
+			asap: asap
+		};
+
+		function isNode () {
+			return typeof process !== 'undefined' &&
+				Object.prototype.toString.call(process) === '[object process]';
+		}
+
+		function hasMutationObserver () {
+			return (typeof MutationObserver === 'function' && MutationObserver) ||
+				(typeof WebKitMutationObserver === 'function' && WebKitMutationObserver);
+		}
+
+		function initMutationObserver(MutationObserver) {
+			var scheduled;
+			var node = document.createTextNode('');
+			var o = new MutationObserver(run);
+			o.observe(node, { characterData: true });
+
+			function run() {
+				var f = scheduled;
+				scheduled = void 0;
+				f();
+			}
+
+			var i = 0;
+			return function (f) {
+				scheduled = f;
+				node.data = (i ^= 1);
+			};
+		}
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
+
+/***/ },
+/* 52 */
+/***/ function(module, exports) {
+
+	/* (ignored) */
+
+/***/ },
+/* 53 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		/**
+		 * Custom error type for promises rejected by promise.timeout
+		 * @param {string} message
+		 * @constructor
+		 */
+		function TimeoutError (message) {
+			Error.call(this);
+			this.message = message;
+			this.name = TimeoutError.name;
+			if (typeof Error.captureStackTrace === 'function') {
+				Error.captureStackTrace(this, TimeoutError);
+			}
+		}
+
+		TimeoutError.prototype = Object.create(Error.prototype);
+		TimeoutError.prototype.constructor = TimeoutError;
+
+		return TimeoutError;
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+/***/ },
+/* 54 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) {
+
+		var state = __webpack_require__(55);
+		var applier = __webpack_require__(56);
+
+		return function array(Promise) {
+
+			var applyFold = applier(Promise);
+			var toPromise = Promise.resolve;
+			var all = Promise.all;
+
+			var ar = Array.prototype.reduce;
+			var arr = Array.prototype.reduceRight;
+			var slice = Array.prototype.slice;
+
+			// Additional array combinators
+
+			Promise.any = any;
+			Promise.some = some;
+			Promise.settle = settle;
+
+			Promise.map = map;
+			Promise.filter = filter;
+			Promise.reduce = reduce;
+			Promise.reduceRight = reduceRight;
+
+			/**
+			 * When this promise fulfills with an array, do
+			 * onFulfilled.apply(void 0, array)
+			 * @param {function} onFulfilled function to apply
+			 * @returns {Promise} promise for the result of applying onFulfilled
+			 */
+			Promise.prototype.spread = function(onFulfilled) {
+				return this.then(all).then(function(array) {
+					return onFulfilled.apply(this, array);
+				});
+			};
+
+			return Promise;
+
+			/**
+			 * One-winner competitive race.
+			 * Return a promise that will fulfill when one of the promises
+			 * in the input array fulfills, or will reject when all promises
+			 * have rejected.
+			 * @param {array} promises
+			 * @returns {Promise} promise for the first fulfilled value
+			 */
+			function any(promises) {
+				var p = Promise._defer();
+				var resolver = p._handler;
+				var l = promises.length>>>0;
+
+				var pending = l;
+				var errors = [];
+
+				for (var h, x, i = 0; i < l; ++i) {
+					x = promises[i];
+					if(x === void 0 && !(i in promises)) {
+						--pending;
+						continue;
+					}
+
+					h = Promise._handler(x);
+					if(h.state() > 0) {
+						resolver.become(h);
+						Promise._visitRemaining(promises, i, h);
+						break;
+					} else {
+						h.visit(resolver, handleFulfill, handleReject);
+					}
+				}
+
+				if(pending === 0) {
+					resolver.reject(new RangeError('any(): array must not be empty'));
+				}
+
+				return p;
+
+				function handleFulfill(x) {
+					/*jshint validthis:true*/
+					errors = null;
+					this.resolve(x); // this === resolver
+				}
+
+				function handleReject(e) {
+					/*jshint validthis:true*/
+					if(this.resolved) { // this === resolver
+						return;
+					}
+
+					errors.push(e);
+					if(--pending === 0) {
+						this.reject(errors);
+					}
+				}
+			}
+
+			/**
+			 * N-winner competitive race
+			 * Return a promise that will fulfill when n input promises have
+			 * fulfilled, or will reject when it becomes impossible for n
+			 * input promises to fulfill (ie when promises.length - n + 1
+			 * have rejected)
+			 * @param {array} promises
+			 * @param {number} n
+			 * @returns {Promise} promise for the earliest n fulfillment values
+			 *
+			 * @deprecated
+			 */
+			function some(promises, n) {
+				/*jshint maxcomplexity:7*/
+				var p = Promise._defer();
+				var resolver = p._handler;
+
+				var results = [];
+				var errors = [];
+
+				var l = promises.length>>>0;
+				var nFulfill = 0;
+				var nReject;
+				var x, i; // reused in both for() loops
+
+				// First pass: count actual array items
+				for(i=0; i<l; ++i) {
+					x = promises[i];
+					if(x === void 0 && !(i in promises)) {
+						continue;
+					}
+					++nFulfill;
+				}
+
+				// Compute actual goals
+				n = Math.max(n, 0);
+				nReject = (nFulfill - n + 1);
+				nFulfill = Math.min(n, nFulfill);
+
+				if(n > nFulfill) {
+					resolver.reject(new RangeError('some(): array must contain at least '
+					+ n + ' item(s), but had ' + nFulfill));
+				} else if(nFulfill === 0) {
+					resolver.resolve(results);
+				}
+
+				// Second pass: observe each array item, make progress toward goals
+				for(i=0; i<l; ++i) {
+					x = promises[i];
+					if(x === void 0 && !(i in promises)) {
+						continue;
+					}
+
+					Promise._handler(x).visit(resolver, fulfill, reject, resolver.notify);
+				}
+
+				return p;
+
+				function fulfill(x) {
+					/*jshint validthis:true*/
+					if(this.resolved) { // this === resolver
+						return;
+					}
+
+					results.push(x);
+					if(--nFulfill === 0) {
+						errors = null;
+						this.resolve(results);
+					}
+				}
+
+				function reject(e) {
+					/*jshint validthis:true*/
+					if(this.resolved) { // this === resolver
+						return;
+					}
+
+					errors.push(e);
+					if(--nReject === 0) {
+						results = null;
+						this.reject(errors);
+					}
+				}
+			}
+
+			/**
+			 * Apply f to the value of each promise in a list of promises
+			 * and return a new list containing the results.
+			 * @param {array} promises
+			 * @param {function(x:*, index:Number):*} f mapping function
+			 * @returns {Promise}
+			 */
+			function map(promises, f) {
+				return Promise._traverse(f, promises);
+			}
+
+			/**
+			 * Filter the provided array of promises using the provided predicate.  Input may
+			 * contain promises and values
+			 * @param {Array} promises array of promises and values
+			 * @param {function(x:*, index:Number):boolean} predicate filtering predicate.
+			 *  Must return truthy (or promise for truthy) for items to retain.
+			 * @returns {Promise} promise that will fulfill with an array containing all items
+			 *  for which predicate returned truthy.
+			 */
+			function filter(promises, predicate) {
+				var a = slice.call(promises);
+				return Promise._traverse(predicate, a).then(function(keep) {
+					return filterSync(a, keep);
+				});
+			}
+
+			function filterSync(promises, keep) {
+				// Safe because we know all promises have fulfilled if we've made it this far
+				var l = keep.length;
+				var filtered = new Array(l);
+				for(var i=0, j=0; i<l; ++i) {
+					if(keep[i]) {
+						filtered[j++] = Promise._handler(promises[i]).value;
+					}
+				}
+				filtered.length = j;
+				return filtered;
+
+			}
+
+			/**
+			 * Return a promise that will always fulfill with an array containing
+			 * the outcome states of all input promises.  The returned promise
+			 * will never reject.
+			 * @param {Array} promises
+			 * @returns {Promise} promise for array of settled state descriptors
+			 */
+			function settle(promises) {
+				return all(promises.map(settleOne));
+			}
+
+			function settleOne(p) {
+				var h = Promise._handler(p);
+				if(h.state() === 0) {
+					return toPromise(p).then(state.fulfilled, state.rejected);
+				}
+
+				h._unreport();
+				return state.inspect(h);
+			}
+
+			/**
+			 * Traditional reduce function, similar to `Array.prototype.reduce()`, but
+			 * input may contain promises and/or values, and reduceFunc
+			 * may return either a value or a promise, *and* initialValue may
+			 * be a promise for the starting value.
+			 * @param {Array|Promise} promises array or promise for an array of anything,
+			 *      may contain a mix of promises and values.
+			 * @param {function(accumulated:*, x:*, index:Number):*} f reduce function
+			 * @returns {Promise} that will resolve to the final reduced value
+			 */
+			function reduce(promises, f /*, initialValue */) {
+				return arguments.length > 2 ? ar.call(promises, liftCombine(f), arguments[2])
+						: ar.call(promises, liftCombine(f));
+			}
+
+			/**
+			 * Traditional reduce function, similar to `Array.prototype.reduceRight()`, but
+			 * input may contain promises and/or values, and reduceFunc
+			 * may return either a value or a promise, *and* initialValue may
+			 * be a promise for the starting value.
+			 * @param {Array|Promise} promises array or promise for an array of anything,
+			 *      may contain a mix of promises and values.
+			 * @param {function(accumulated:*, x:*, index:Number):*} f reduce function
+			 * @returns {Promise} that will resolve to the final reduced value
+			 */
+			function reduceRight(promises, f /*, initialValue */) {
+				return arguments.length > 2 ? arr.call(promises, liftCombine(f), arguments[2])
+						: arr.call(promises, liftCombine(f));
+			}
+
+			function liftCombine(f) {
+				return function(z, x, i) {
+					return applyFold(f, void 0, [z,x,i]);
+				};
+			}
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 55 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return {
+			pending: toPendingState,
+			fulfilled: toFulfilledState,
+			rejected: toRejectedState,
+			inspect: inspect
+		};
+
+		function toPendingState() {
+			return { state: 'pending' };
+		}
+
+		function toRejectedState(e) {
+			return { state: 'rejected', reason: e };
+		}
+
+		function toFulfilledState(x) {
+			return { state: 'fulfilled', value: x };
+		}
+
+		function inspect(handler) {
+			var state = handler.state();
+			return state === 0 ? toPendingState()
+				 : state > 0   ? toFulfilledState(handler.value)
+				               : toRejectedState(handler.value);
+		}
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 56 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		makeApply.tryCatchResolve = tryCatchResolve;
+
+		return makeApply;
+
+		function makeApply(Promise, call) {
+			if(arguments.length < 2) {
+				call = tryCatchResolve;
+			}
+
+			return apply;
+
+			function apply(f, thisArg, args) {
+				var p = Promise._defer();
+				var l = args.length;
+				var params = new Array(l);
+				callAndResolve({ f:f, thisArg:thisArg, args:args, params:params, i:l-1, call:call }, p._handler);
+
+				return p;
+			}
+
+			function callAndResolve(c, h) {
+				if(c.i < 0) {
+					return call(c.f, c.thisArg, c.params, h);
+				}
+
+				var handler = Promise._handler(c.args[c.i]);
+				handler.fold(callAndResolveNext, c, void 0, h);
+			}
+
+			function callAndResolveNext(c, x, h) {
+				c.params[c.i] = x;
+				c.i -= 1;
+				callAndResolve(c, h);
+			}
+		}
+
+		function tryCatchResolve(f, thisArg, args, resolver) {
+			try {
+				resolver.resolve(f.apply(thisArg, args));
+			} catch(e) {
+				resolver.reject(e);
+			}
+		}
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+
+
+/***/ },
+/* 57 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return function flow(Promise) {
+
+			var resolve = Promise.resolve;
+			var reject = Promise.reject;
+			var origCatch = Promise.prototype['catch'];
+
+			/**
+			 * Handle the ultimate fulfillment value or rejection reason, and assume
+			 * responsibility for all errors.  If an error propagates out of result
+			 * or handleFatalError, it will be rethrown to the host, resulting in a
+			 * loud stack track on most platforms and a crash on some.
+			 * @param {function?} onResult
+			 * @param {function?} onError
+			 * @returns {undefined}
+			 */
+			Promise.prototype.done = function(onResult, onError) {
+				this._handler.visit(this._handler.receiver, onResult, onError);
+			};
+
+			/**
+			 * Add Error-type and predicate matching to catch.  Examples:
+			 * promise.catch(TypeError, handleTypeError)
+			 *   .catch(predicate, handleMatchedErrors)
+			 *   .catch(handleRemainingErrors)
+			 * @param onRejected
+			 * @returns {*}
+			 */
+			Promise.prototype['catch'] = Promise.prototype.otherwise = function(onRejected) {
+				if (arguments.length < 2) {
+					return origCatch.call(this, onRejected);
+				}
+
+				if(typeof onRejected !== 'function') {
+					return this.ensure(rejectInvalidPredicate);
+				}
+
+				return origCatch.call(this, createCatchFilter(arguments[1], onRejected));
+			};
+
+			/**
+			 * Wraps the provided catch handler, so that it will only be called
+			 * if the predicate evaluates truthy
+			 * @param {?function} handler
+			 * @param {function} predicate
+			 * @returns {function} conditional catch handler
+			 */
+			function createCatchFilter(handler, predicate) {
+				return function(e) {
+					return evaluatePredicate(e, predicate)
+						? handler.call(this, e)
+						: reject(e);
+				};
+			}
+
+			/**
+			 * Ensures that onFulfilledOrRejected will be called regardless of whether
+			 * this promise is fulfilled or rejected.  onFulfilledOrRejected WILL NOT
+			 * receive the promises' value or reason.  Any returned value will be disregarded.
+			 * onFulfilledOrRejected may throw or return a rejected promise to signal
+			 * an additional error.
+			 * @param {function} handler handler to be called regardless of
+			 *  fulfillment or rejection
+			 * @returns {Promise}
+			 */
+			Promise.prototype['finally'] = Promise.prototype.ensure = function(handler) {
+				if(typeof handler !== 'function') {
+					return this;
+				}
+
+				return this.then(function(x) {
+					return runSideEffect(handler, this, identity, x);
+				}, function(e) {
+					return runSideEffect(handler, this, reject, e);
+				});
+			};
+
+			function runSideEffect (handler, thisArg, propagate, value) {
+				var result = handler.call(thisArg);
+				return maybeThenable(result)
+					? propagateValue(result, propagate, value)
+					: propagate(value);
+			}
+
+			function propagateValue (result, propagate, x) {
+				return resolve(result).then(function () {
+					return propagate(x);
+				});
+			}
+
+			/**
+			 * Recover from a failure by returning a defaultValue.  If defaultValue
+			 * is a promise, it's fulfillment value will be used.  If defaultValue is
+			 * a promise that rejects, the returned promise will reject with the
+			 * same reason.
+			 * @param {*} defaultValue
+			 * @returns {Promise} new promise
+			 */
+			Promise.prototype['else'] = Promise.prototype.orElse = function(defaultValue) {
+				return this.then(void 0, function() {
+					return defaultValue;
+				});
+			};
+
+			/**
+			 * Shortcut for .then(function() { return value; })
+			 * @param  {*} value
+			 * @return {Promise} a promise that:
+			 *  - is fulfilled if value is not a promise, or
+			 *  - if value is a promise, will fulfill with its value, or reject
+			 *    with its reason.
+			 */
+			Promise.prototype['yield'] = function(value) {
+				return this.then(function() {
+					return value;
+				});
+			};
+
+			/**
+			 * Runs a side effect when this promise fulfills, without changing the
+			 * fulfillment value.
+			 * @param {function} onFulfilledSideEffect
+			 * @returns {Promise}
+			 */
+			Promise.prototype.tap = function(onFulfilledSideEffect) {
+				return this.then(onFulfilledSideEffect)['yield'](this);
+			};
+
+			return Promise;
+		};
+
+		function rejectInvalidPredicate() {
+			throw new TypeError('catch predicate must be a function');
+		}
+
+		function evaluatePredicate(e, predicate) {
+			return isError(predicate) ? e instanceof predicate : predicate(e);
+		}
+
+		function isError(predicate) {
+			return predicate === Error
+				|| (predicate != null && predicate.prototype instanceof Error);
+		}
+
+		function maybeThenable(x) {
+			return (typeof x === 'object' || typeof x === 'function') && x !== null;
+		}
+
+		function identity(x) {
+			return x;
+		}
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 58 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+	/** @author Jeff Escalante */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return function fold(Promise) {
+
+			Promise.prototype.fold = function(f, z) {
+				var promise = this._beget();
+
+				this._handler.fold(function(z, x, to) {
+					Promise._handler(z).fold(function(x, z, to) {
+						to.resolve(f.call(this, z, x));
+					}, x, this, to);
+				}, z, promise._handler.receiver, promise._handler);
+
+				return promise;
+			};
+
+			return Promise;
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 59 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) {
+
+		var inspect = __webpack_require__(55).inspect;
+
+		return function inspection(Promise) {
+
+			Promise.prototype.inspect = function() {
+				return inspect(Promise._handler(this));
+			};
+
+			return Promise;
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 60 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return function generate(Promise) {
+
+			var resolve = Promise.resolve;
+
+			Promise.iterate = iterate;
+			Promise.unfold = unfold;
+
+			return Promise;
+
+			/**
+			 * @deprecated Use github.com/cujojs/most streams and most.iterate
+			 * Generate a (potentially infinite) stream of promised values:
+			 * x, f(x), f(f(x)), etc. until condition(x) returns true
+			 * @param {function} f function to generate a new x from the previous x
+			 * @param {function} condition function that, given the current x, returns
+			 *  truthy when the iterate should stop
+			 * @param {function} handler function to handle the value produced by f
+			 * @param {*|Promise} x starting value, may be a promise
+			 * @return {Promise} the result of the last call to f before
+			 *  condition returns true
+			 */
+			function iterate(f, condition, handler, x) {
+				return unfold(function(x) {
+					return [x, f(x)];
+				}, condition, handler, x);
+			}
+
+			/**
+			 * @deprecated Use github.com/cujojs/most streams and most.unfold
+			 * Generate a (potentially infinite) stream of promised values
+			 * by applying handler(generator(seed)) iteratively until
+			 * condition(seed) returns true.
+			 * @param {function} unspool function that generates a [value, newSeed]
+			 *  given a seed.
+			 * @param {function} condition function that, given the current seed, returns
+			 *  truthy when the unfold should stop
+			 * @param {function} handler function to handle the value produced by unspool
+			 * @param x {*|Promise} starting value, may be a promise
+			 * @return {Promise} the result of the last value produced by unspool before
+			 *  condition returns true
+			 */
+			function unfold(unspool, condition, handler, x) {
+				return resolve(x).then(function(seed) {
+					return resolve(condition(seed)).then(function(done) {
+						return done ? seed : resolve(unspool(seed)).spread(next);
+					});
+				});
+
+				function next(item, newSeed) {
+					return resolve(handler(item)).then(function() {
+						return unfold(unspool, condition, handler, newSeed);
+					});
+				}
+			}
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 61 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return function progress(Promise) {
+
+			/**
+			 * @deprecated
+			 * Register a progress handler for this promise
+			 * @param {function} onProgress
+			 * @returns {Promise}
+			 */
+			Promise.prototype.progress = function(onProgress) {
+				return this.then(void 0, void 0, onProgress);
+			};
+
+			return Promise;
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 62 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return function addWith(Promise) {
+			/**
+			 * Returns a promise whose handlers will be called with `this` set to
+			 * the supplied receiver.  Subsequent promises derived from the
+			 * returned promise will also have their handlers called with receiver
+			 * as `this`. Calling `with` with undefined or no arguments will return
+			 * a promise whose handlers will again be called in the usual Promises/A+
+			 * way (no `this`) thus safely undoing any previous `with` in the
+			 * promise chain.
+			 *
+			 * WARNING: Promises returned from `with`/`withThis` are NOT Promises/A+
+			 * compliant, specifically violating 2.2.5 (http://promisesaplus.com/#point-41)
+			 *
+			 * @param {object} receiver `this` value for all handlers attached to
+			 *  the returned promise.
+			 * @returns {Promise}
+			 */
+			Promise.prototype['with'] = Promise.prototype.withThis = function(receiver) {
+				var p = this._beget();
+				var child = p._handler;
+				child.receiver = receiver;
+				this._handler.chain(child, receiver);
+				return p;
+			};
+
+			return Promise;
+		};
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+
+/***/ },
+/* 63 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function(require) {
+
+		var setTimer = __webpack_require__(51).setTimer;
+		var format = __webpack_require__(64);
+
+		return function unhandledRejection(Promise) {
+
+			var logError = noop;
+			var logInfo = noop;
+			var localConsole;
+
+			if(typeof console !== 'undefined') {
+				// Alias console to prevent things like uglify's drop_console option from
+				// removing console.log/error. Unhandled rejections fall into the same
+				// category as uncaught exceptions, and build tools shouldn't silence them.
+				localConsole = console;
+				logError = typeof localConsole.error !== 'undefined'
+					? function (e) { localConsole.error(e); }
+					: function (e) { localConsole.log(e); };
+
+				logInfo = typeof localConsole.info !== 'undefined'
+					? function (e) { localConsole.info(e); }
+					: function (e) { localConsole.log(e); };
+			}
+
+			Promise.onPotentiallyUnhandledRejection = function(rejection) {
+				enqueue(report, rejection);
+			};
+
+			Promise.onPotentiallyUnhandledRejectionHandled = function(rejection) {
+				enqueue(unreport, rejection);
+			};
+
+			Promise.onFatalRejection = function(rejection) {
+				enqueue(throwit, rejection.value);
+			};
+
+			var tasks = [];
+			var reported = [];
+			var running = null;
+
+			function report(r) {
+				if(!r.handled) {
+					reported.push(r);
+					logError('Potentially unhandled rejection [' + r.id + '] ' + format.formatError(r.value));
+				}
+			}
+
+			function unreport(r) {
+				var i = reported.indexOf(r);
+				if(i >= 0) {
+					reported.splice(i, 1);
+					logInfo('Handled previous rejection [' + r.id + '] ' + format.formatObject(r.value));
+				}
+			}
+
+			function enqueue(f, x) {
+				tasks.push(f, x);
+				if(running === null) {
+					running = setTimer(flush, 0);
+				}
+			}
+
+			function flush() {
+				running = null;
+				while(tasks.length > 0) {
+					tasks.shift()(tasks.shift());
+				}
+			}
+
+			return Promise;
+		};
+
+		function throwit(e) {
+			throw e;
+		}
+
+		function noop() {}
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 64 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return {
+			formatError: formatError,
+			formatObject: formatObject,
+			tryStringify: tryStringify
+		};
+
+		/**
+		 * Format an error into a string.  If e is an Error and has a stack property,
+		 * it's returned.  Otherwise, e is formatted using formatObject, with a
+		 * warning added about e not being a proper Error.
+		 * @param {*} e
+		 * @returns {String} formatted string, suitable for output to developers
+		 */
+		function formatError(e) {
+			var s = typeof e === 'object' && e !== null && (e.stack || e.message) ? e.stack || e.message : formatObject(e);
+			return e instanceof Error ? s : s + ' (WARNING: non-Error used)';
+		}
+
+		/**
+		 * Format an object, detecting "plain" objects and running them through
+		 * JSON.stringify if possible.
+		 * @param {Object} o
+		 * @returns {string}
+		 */
+		function formatObject(o) {
+			var s = String(o);
+			if(s === '[object Object]' && typeof JSON !== 'undefined') {
+				s = tryStringify(o, s);
+			}
+			return s;
+		}
+
+		/**
+		 * Try to return the result of JSON.stringify(x).  If that fails, return
+		 * defaultValue
+		 * @param {*} x
+		 * @param {*} defaultValue
+		 * @returns {String|*} JSON.stringify(x) or defaultValue
+		 */
+		function tryStringify(x, defaultValue) {
+			try {
+				return JSON.stringify(x);
+			} catch(e) {
+				return defaultValue;
+			}
+		}
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 65 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+		var makePromise = __webpack_require__(66);
+		var Scheduler = __webpack_require__(67);
+		var async = __webpack_require__(51).asap;
+
+		return makePromise({
+			scheduler: new Scheduler(async)
+		});
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	})(__webpack_require__(47));
+
+
+/***/ },
+/* 66 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/* WEBPACK VAR INJECTION */(function(process) {/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		return function makePromise(environment) {
+
+			var tasks = environment.scheduler;
+			var emitRejection = initEmitRejection();
+
+			var objectCreate = Object.create ||
+				function(proto) {
+					function Child() {}
+					Child.prototype = proto;
+					return new Child();
+				};
+
+			/**
+			 * Create a promise whose fate is determined by resolver
+			 * @constructor
+			 * @returns {Promise} promise
+			 * @name Promise
+			 */
+			function Promise(resolver, handler) {
+				this._handler = resolver === Handler ? handler : init(resolver);
+			}
+
+			/**
+			 * Run the supplied resolver
+			 * @param resolver
+			 * @returns {Pending}
+			 */
+			function init(resolver) {
+				var handler = new Pending();
+
+				try {
+					resolver(promiseResolve, promiseReject, promiseNotify);
+				} catch (e) {
+					promiseReject(e);
+				}
+
+				return handler;
+
+				/**
+				 * Transition from pre-resolution state to post-resolution state, notifying
+				 * all listeners of the ultimate fulfillment or rejection
+				 * @param {*} x resolution value
+				 */
+				function promiseResolve (x) {
+					handler.resolve(x);
+				}
+				/**
+				 * Reject this promise with reason, which will be used verbatim
+				 * @param {Error|*} reason rejection reason, strongly suggested
+				 *   to be an Error type
+				 */
+				function promiseReject (reason) {
+					handler.reject(reason);
+				}
+
+				/**
+				 * @deprecated
+				 * Issue a progress event, notifying all progress listeners
+				 * @param {*} x progress event payload to pass to all listeners
+				 */
+				function promiseNotify (x) {
+					handler.notify(x);
+				}
+			}
+
+			// Creation
+
+			Promise.resolve = resolve;
+			Promise.reject = reject;
+			Promise.never = never;
+
+			Promise._defer = defer;
+			Promise._handler = getHandler;
+
+			/**
+			 * Returns a trusted promise. If x is already a trusted promise, it is
+			 * returned, otherwise returns a new trusted Promise which follows x.
+			 * @param  {*} x
+			 * @return {Promise} promise
+			 */
+			function resolve(x) {
+				return isPromise(x) ? x
+					: new Promise(Handler, new Async(getHandler(x)));
+			}
+
+			/**
+			 * Return a reject promise with x as its reason (x is used verbatim)
+			 * @param {*} x
+			 * @returns {Promise} rejected promise
+			 */
+			function reject(x) {
+				return new Promise(Handler, new Async(new Rejected(x)));
+			}
+
+			/**
+			 * Return a promise that remains pending forever
+			 * @returns {Promise} forever-pending promise.
+			 */
+			function never() {
+				return foreverPendingPromise; // Should be frozen
+			}
+
+			/**
+			 * Creates an internal {promise, resolver} pair
+			 * @private
+			 * @returns {Promise}
+			 */
+			function defer() {
+				return new Promise(Handler, new Pending());
+			}
+
+			// Transformation and flow control
+
+			/**
+			 * Transform this promise's fulfillment value, returning a new Promise
+			 * for the transformed result.  If the promise cannot be fulfilled, onRejected
+			 * is called with the reason.  onProgress *may* be called with updates toward
+			 * this promise's fulfillment.
+			 * @param {function=} onFulfilled fulfillment handler
+			 * @param {function=} onRejected rejection handler
+			 * @param {function=} onProgress @deprecated progress handler
+			 * @return {Promise} new promise
+			 */
+			Promise.prototype.then = function(onFulfilled, onRejected, onProgress) {
+				var parent = this._handler;
+				var state = parent.join().state();
+
+				if ((typeof onFulfilled !== 'function' && state > 0) ||
+					(typeof onRejected !== 'function' && state < 0)) {
+					// Short circuit: value will not change, simply share handler
+					return new this.constructor(Handler, parent);
+				}
+
+				var p = this._beget();
+				var child = p._handler;
+
+				parent.chain(child, parent.receiver, onFulfilled, onRejected, onProgress);
+
+				return p;
+			};
+
+			/**
+			 * If this promise cannot be fulfilled due to an error, call onRejected to
+			 * handle the error. Shortcut for .then(undefined, onRejected)
+			 * @param {function?} onRejected
+			 * @return {Promise}
+			 */
+			Promise.prototype['catch'] = function(onRejected) {
+				return this.then(void 0, onRejected);
+			};
+
+			/**
+			 * Creates a new, pending promise of the same type as this promise
+			 * @private
+			 * @returns {Promise}
+			 */
+			Promise.prototype._beget = function() {
+				return begetFrom(this._handler, this.constructor);
+			};
+
+			function begetFrom(parent, Promise) {
+				var child = new Pending(parent.receiver, parent.join().context);
+				return new Promise(Handler, child);
+			}
+
+			// Array combinators
+
+			Promise.all = all;
+			Promise.race = race;
+			Promise._traverse = traverse;
+
+			/**
+			 * Return a promise that will fulfill when all promises in the
+			 * input array have fulfilled, or will reject when one of the
+			 * promises rejects.
+			 * @param {array} promises array of promises
+			 * @returns {Promise} promise for array of fulfillment values
+			 */
+			function all(promises) {
+				return traverseWith(snd, null, promises);
+			}
+
+			/**
+			 * Array<Promise<X>> -> Promise<Array<f(X)>>
+			 * @private
+			 * @param {function} f function to apply to each promise's value
+			 * @param {Array} promises array of promises
+			 * @returns {Promise} promise for transformed values
+			 */
+			function traverse(f, promises) {
+				return traverseWith(tryCatch2, f, promises);
+			}
+
+			function traverseWith(tryMap, f, promises) {
+				var handler = typeof f === 'function' ? mapAt : settleAt;
+
+				var resolver = new Pending();
+				var pending = promises.length >>> 0;
+				var results = new Array(pending);
+
+				for (var i = 0, x; i < promises.length && !resolver.resolved; ++i) {
+					x = promises[i];
+
+					if (x === void 0 && !(i in promises)) {
+						--pending;
+						continue;
+					}
+
+					traverseAt(promises, handler, i, x, resolver);
+				}
+
+				if(pending === 0) {
+					resolver.become(new Fulfilled(results));
+				}
+
+				return new Promise(Handler, resolver);
+
+				function mapAt(i, x, resolver) {
+					if(!resolver.resolved) {
+						traverseAt(promises, settleAt, i, tryMap(f, x, i), resolver);
+					}
+				}
+
+				function settleAt(i, x, resolver) {
+					results[i] = x;
+					if(--pending === 0) {
+						resolver.become(new Fulfilled(results));
+					}
+				}
+			}
+
+			function traverseAt(promises, handler, i, x, resolver) {
+				if (maybeThenable(x)) {
+					var h = getHandlerMaybeThenable(x);
+					var s = h.state();
+
+					if (s === 0) {
+						h.fold(handler, i, void 0, resolver);
+					} else if (s > 0) {
+						handler(i, h.value, resolver);
+					} else {
+						resolver.become(h);
+						visitRemaining(promises, i+1, h);
+					}
+				} else {
+					handler(i, x, resolver);
+				}
+			}
+
+			Promise._visitRemaining = visitRemaining;
+			function visitRemaining(promises, start, handler) {
+				for(var i=start; i<promises.length; ++i) {
+					markAsHandled(getHandler(promises[i]), handler);
+				}
+			}
+
+			function markAsHandled(h, handler) {
+				if(h === handler) {
+					return;
+				}
+
+				var s = h.state();
+				if(s === 0) {
+					h.visit(h, void 0, h._unreport);
+				} else if(s < 0) {
+					h._unreport();
+				}
+			}
+
+			/**
+			 * Fulfill-reject competitive race. Return a promise that will settle
+			 * to the same state as the earliest input promise to settle.
+			 *
+			 * WARNING: The ES6 Promise spec requires that race()ing an empty array
+			 * must return a promise that is pending forever.  This implementation
+			 * returns a singleton forever-pending promise, the same singleton that is
+			 * returned by Promise.never(), thus can be checked with ===
+			 *
+			 * @param {array} promises array of promises to race
+			 * @returns {Promise} if input is non-empty, a promise that will settle
+			 * to the same outcome as the earliest input promise to settle. if empty
+			 * is empty, returns a promise that will never settle.
+			 */
+			function race(promises) {
+				if(typeof promises !== 'object' || promises === null) {
+					return reject(new TypeError('non-iterable passed to race()'));
+				}
+
+				// Sigh, race([]) is untestable unless we return *something*
+				// that is recognizable without calling .then() on it.
+				return promises.length === 0 ? never()
+					 : promises.length === 1 ? resolve(promises[0])
+					 : runRace(promises);
+			}
+
+			function runRace(promises) {
+				var resolver = new Pending();
+				var i, x, h;
+				for(i=0; i<promises.length; ++i) {
+					x = promises[i];
+					if (x === void 0 && !(i in promises)) {
+						continue;
+					}
+
+					h = getHandler(x);
+					if(h.state() !== 0) {
+						resolver.become(h);
+						visitRemaining(promises, i+1, h);
+						break;
+					} else {
+						h.visit(resolver, resolver.resolve, resolver.reject);
+					}
+				}
+				return new Promise(Handler, resolver);
+			}
+
+			// Promise internals
+			// Below this, everything is @private
+
+			/**
+			 * Get an appropriate handler for x, without checking for cycles
+			 * @param {*} x
+			 * @returns {object} handler
+			 */
+			function getHandler(x) {
+				if(isPromise(x)) {
+					return x._handler.join();
+				}
+				return maybeThenable(x) ? getHandlerUntrusted(x) : new Fulfilled(x);
+			}
+
+			/**
+			 * Get a handler for thenable x.
+			 * NOTE: You must only call this if maybeThenable(x) == true
+			 * @param {object|function|Promise} x
+			 * @returns {object} handler
+			 */
+			function getHandlerMaybeThenable(x) {
+				return isPromise(x) ? x._handler.join() : getHandlerUntrusted(x);
+			}
+
+			/**
+			 * Get a handler for potentially untrusted thenable x
+			 * @param {*} x
+			 * @returns {object} handler
+			 */
+			function getHandlerUntrusted(x) {
+				try {
+					var untrustedThen = x.then;
+					return typeof untrustedThen === 'function'
+						? new Thenable(untrustedThen, x)
+						: new Fulfilled(x);
+				} catch(e) {
+					return new Rejected(e);
+				}
+			}
+
+			/**
+			 * Handler for a promise that is pending forever
+			 * @constructor
+			 */
+			function Handler() {}
+
+			Handler.prototype.when
+				= Handler.prototype.become
+				= Handler.prototype.notify // deprecated
+				= Handler.prototype.fail
+				= Handler.prototype._unreport
+				= Handler.prototype._report
+				= noop;
+
+			Handler.prototype._state = 0;
+
+			Handler.prototype.state = function() {
+				return this._state;
+			};
+
+			/**
+			 * Recursively collapse handler chain to find the handler
+			 * nearest to the fully resolved value.
+			 * @returns {object} handler nearest the fully resolved value
+			 */
+			Handler.prototype.join = function() {
+				var h = this;
+				while(h.handler !== void 0) {
+					h = h.handler;
+				}
+				return h;
+			};
+
+			Handler.prototype.chain = function(to, receiver, fulfilled, rejected, progress) {
+				this.when({
+					resolver: to,
+					receiver: receiver,
+					fulfilled: fulfilled,
+					rejected: rejected,
+					progress: progress
+				});
+			};
+
+			Handler.prototype.visit = function(receiver, fulfilled, rejected, progress) {
+				this.chain(failIfRejected, receiver, fulfilled, rejected, progress);
+			};
+
+			Handler.prototype.fold = function(f, z, c, to) {
+				this.when(new Fold(f, z, c, to));
+			};
+
+			/**
+			 * Handler that invokes fail() on any handler it becomes
+			 * @constructor
+			 */
+			function FailIfRejected() {}
+
+			inherit(Handler, FailIfRejected);
+
+			FailIfRejected.prototype.become = function(h) {
+				h.fail();
+			};
+
+			var failIfRejected = new FailIfRejected();
+
+			/**
+			 * Handler that manages a queue of consumers waiting on a pending promise
+			 * @constructor
+			 */
+			function Pending(receiver, inheritedContext) {
+				Promise.createContext(this, inheritedContext);
+
+				this.consumers = void 0;
+				this.receiver = receiver;
+				this.handler = void 0;
+				this.resolved = false;
+			}
+
+			inherit(Handler, Pending);
+
+			Pending.prototype._state = 0;
+
+			Pending.prototype.resolve = function(x) {
+				this.become(getHandler(x));
+			};
+
+			Pending.prototype.reject = function(x) {
+				if(this.resolved) {
+					return;
+				}
+
+				this.become(new Rejected(x));
+			};
+
+			Pending.prototype.join = function() {
+				if (!this.resolved) {
+					return this;
+				}
+
+				var h = this;
+
+				while (h.handler !== void 0) {
+					h = h.handler;
+					if (h === this) {
+						return this.handler = cycle();
+					}
+				}
+
+				return h;
+			};
+
+			Pending.prototype.run = function() {
+				var q = this.consumers;
+				var handler = this.handler;
+				this.handler = this.handler.join();
+				this.consumers = void 0;
+
+				for (var i = 0; i < q.length; ++i) {
+					handler.when(q[i]);
+				}
+			};
+
+			Pending.prototype.become = function(handler) {
+				if(this.resolved) {
+					return;
+				}
+
+				this.resolved = true;
+				this.handler = handler;
+				if(this.consumers !== void 0) {
+					tasks.enqueue(this);
+				}
+
+				if(this.context !== void 0) {
+					handler._report(this.context);
+				}
+			};
+
+			Pending.prototype.when = function(continuation) {
+				if(this.resolved) {
+					tasks.enqueue(new ContinuationTask(continuation, this.handler));
+				} else {
+					if(this.consumers === void 0) {
+						this.consumers = [continuation];
+					} else {
+						this.consumers.push(continuation);
+					}
+				}
+			};
+
+			/**
+			 * @deprecated
+			 */
+			Pending.prototype.notify = function(x) {
+				if(!this.resolved) {
+					tasks.enqueue(new ProgressTask(x, this));
+				}
+			};
+
+			Pending.prototype.fail = function(context) {
+				var c = typeof context === 'undefined' ? this.context : context;
+				this.resolved && this.handler.join().fail(c);
+			};
+
+			Pending.prototype._report = function(context) {
+				this.resolved && this.handler.join()._report(context);
+			};
+
+			Pending.prototype._unreport = function() {
+				this.resolved && this.handler.join()._unreport();
+			};
+
+			/**
+			 * Wrap another handler and force it into a future stack
+			 * @param {object} handler
+			 * @constructor
+			 */
+			function Async(handler) {
+				this.handler = handler;
+			}
+
+			inherit(Handler, Async);
+
+			Async.prototype.when = function(continuation) {
+				tasks.enqueue(new ContinuationTask(continuation, this));
+			};
+
+			Async.prototype._report = function(context) {
+				this.join()._report(context);
+			};
+
+			Async.prototype._unreport = function() {
+				this.join()._unreport();
+			};
+
+			/**
+			 * Handler that wraps an untrusted thenable and assimilates it in a future stack
+			 * @param {function} then
+			 * @param {{then: function}} thenable
+			 * @constructor
+			 */
+			function Thenable(then, thenable) {
+				Pending.call(this);
+				tasks.enqueue(new AssimilateTask(then, thenable, this));
+			}
+
+			inherit(Pending, Thenable);
+
+			/**
+			 * Handler for a fulfilled promise
+			 * @param {*} x fulfillment value
+			 * @constructor
+			 */
+			function Fulfilled(x) {
+				Promise.createContext(this);
+				this.value = x;
+			}
+
+			inherit(Handler, Fulfilled);
+
+			Fulfilled.prototype._state = 1;
+
+			Fulfilled.prototype.fold = function(f, z, c, to) {
+				runContinuation3(f, z, this, c, to);
+			};
+
+			Fulfilled.prototype.when = function(cont) {
+				runContinuation1(cont.fulfilled, this, cont.receiver, cont.resolver);
+			};
+
+			var errorId = 0;
+
+			/**
+			 * Handler for a rejected promise
+			 * @param {*} x rejection reason
+			 * @constructor
+			 */
+			function Rejected(x) {
+				Promise.createContext(this);
+
+				this.id = ++errorId;
+				this.value = x;
+				this.handled = false;
+				this.reported = false;
+
+				this._report();
+			}
+
+			inherit(Handler, Rejected);
+
+			Rejected.prototype._state = -1;
+
+			Rejected.prototype.fold = function(f, z, c, to) {
+				to.become(this);
+			};
+
+			Rejected.prototype.when = function(cont) {
+				if(typeof cont.rejected === 'function') {
+					this._unreport();
+				}
+				runContinuation1(cont.rejected, this, cont.receiver, cont.resolver);
+			};
+
+			Rejected.prototype._report = function(context) {
+				tasks.afterQueue(new ReportTask(this, context));
+			};
+
+			Rejected.prototype._unreport = function() {
+				if(this.handled) {
+					return;
+				}
+				this.handled = true;
+				tasks.afterQueue(new UnreportTask(this));
+			};
+
+			Rejected.prototype.fail = function(context) {
+				this.reported = true;
+				emitRejection('unhandledRejection', this);
+				Promise.onFatalRejection(this, context === void 0 ? this.context : context);
+			};
+
+			function ReportTask(rejection, context) {
+				this.rejection = rejection;
+				this.context = context;
+			}
+
+			ReportTask.prototype.run = function() {
+				if(!this.rejection.handled && !this.rejection.reported) {
+					this.rejection.reported = true;
+					emitRejection('unhandledRejection', this.rejection) ||
+						Promise.onPotentiallyUnhandledRejection(this.rejection, this.context);
+				}
+			};
+
+			function UnreportTask(rejection) {
+				this.rejection = rejection;
+			}
+
+			UnreportTask.prototype.run = function() {
+				if(this.rejection.reported) {
+					emitRejection('rejectionHandled', this.rejection) ||
+						Promise.onPotentiallyUnhandledRejectionHandled(this.rejection);
+				}
+			};
+
+			// Unhandled rejection hooks
+			// By default, everything is a noop
+
+			Promise.createContext
+				= Promise.enterContext
+				= Promise.exitContext
+				= Promise.onPotentiallyUnhandledRejection
+				= Promise.onPotentiallyUnhandledRejectionHandled
+				= Promise.onFatalRejection
+				= noop;
+
+			// Errors and singletons
+
+			var foreverPendingHandler = new Handler();
+			var foreverPendingPromise = new Promise(Handler, foreverPendingHandler);
+
+			function cycle() {
+				return new Rejected(new TypeError('Promise cycle'));
+			}
+
+			// Task runners
+
+			/**
+			 * Run a single consumer
+			 * @constructor
+			 */
+			function ContinuationTask(continuation, handler) {
+				this.continuation = continuation;
+				this.handler = handler;
+			}
+
+			ContinuationTask.prototype.run = function() {
+				this.handler.join().when(this.continuation);
+			};
+
+			/**
+			 * Run a queue of progress handlers
+			 * @constructor
+			 */
+			function ProgressTask(value, handler) {
+				this.handler = handler;
+				this.value = value;
+			}
+
+			ProgressTask.prototype.run = function() {
+				var q = this.handler.consumers;
+				if(q === void 0) {
+					return;
+				}
+
+				for (var c, i = 0; i < q.length; ++i) {
+					c = q[i];
+					runNotify(c.progress, this.value, this.handler, c.receiver, c.resolver);
+				}
+			};
+
+			/**
+			 * Assimilate a thenable, sending it's value to resolver
+			 * @param {function} then
+			 * @param {object|function} thenable
+			 * @param {object} resolver
+			 * @constructor
+			 */
+			function AssimilateTask(then, thenable, resolver) {
+				this._then = then;
+				this.thenable = thenable;
+				this.resolver = resolver;
+			}
+
+			AssimilateTask.prototype.run = function() {
+				var h = this.resolver;
+				tryAssimilate(this._then, this.thenable, _resolve, _reject, _notify);
+
+				function _resolve(x) { h.resolve(x); }
+				function _reject(x)  { h.reject(x); }
+				function _notify(x)  { h.notify(x); }
+			};
+
+			function tryAssimilate(then, thenable, resolve, reject, notify) {
+				try {
+					then.call(thenable, resolve, reject, notify);
+				} catch (e) {
+					reject(e);
+				}
+			}
+
+			/**
+			 * Fold a handler value with z
+			 * @constructor
+			 */
+			function Fold(f, z, c, to) {
+				this.f = f; this.z = z; this.c = c; this.to = to;
+				this.resolver = failIfRejected;
+				this.receiver = this;
+			}
+
+			Fold.prototype.fulfilled = function(x) {
+				this.f.call(this.c, this.z, x, this.to);
+			};
+
+			Fold.prototype.rejected = function(x) {
+				this.to.reject(x);
+			};
+
+			Fold.prototype.progress = function(x) {
+				this.to.notify(x);
+			};
+
+			// Other helpers
+
+			/**
+			 * @param {*} x
+			 * @returns {boolean} true iff x is a trusted Promise
+			 */
+			function isPromise(x) {
+				return x instanceof Promise;
+			}
+
+			/**
+			 * Test just enough to rule out primitives, in order to take faster
+			 * paths in some code
+			 * @param {*} x
+			 * @returns {boolean} false iff x is guaranteed *not* to be a thenable
+			 */
+			function maybeThenable(x) {
+				return (typeof x === 'object' || typeof x === 'function') && x !== null;
+			}
+
+			function runContinuation1(f, h, receiver, next) {
+				if(typeof f !== 'function') {
+					return next.become(h);
+				}
+
+				Promise.enterContext(h);
+				tryCatchReject(f, h.value, receiver, next);
+				Promise.exitContext();
+			}
+
+			function runContinuation3(f, x, h, receiver, next) {
+				if(typeof f !== 'function') {
+					return next.become(h);
+				}
+
+				Promise.enterContext(h);
+				tryCatchReject3(f, x, h.value, receiver, next);
+				Promise.exitContext();
+			}
+
+			/**
+			 * @deprecated
+			 */
+			function runNotify(f, x, h, receiver, next) {
+				if(typeof f !== 'function') {
+					return next.notify(x);
+				}
+
+				Promise.enterContext(h);
+				tryCatchReturn(f, x, receiver, next);
+				Promise.exitContext();
+			}
+
+			function tryCatch2(f, a, b) {
+				try {
+					return f(a, b);
+				} catch(e) {
+					return reject(e);
+				}
+			}
+
+			/**
+			 * Return f.call(thisArg, x), or if it throws return a rejected promise for
+			 * the thrown exception
+			 */
+			function tryCatchReject(f, x, thisArg, next) {
+				try {
+					next.become(getHandler(f.call(thisArg, x)));
+				} catch(e) {
+					next.become(new Rejected(e));
+				}
+			}
+
+			/**
+			 * Same as above, but includes the extra argument parameter.
+			 */
+			function tryCatchReject3(f, x, y, thisArg, next) {
+				try {
+					f.call(thisArg, x, y, next);
+				} catch(e) {
+					next.become(new Rejected(e));
+				}
+			}
+
+			/**
+			 * @deprecated
+			 * Return f.call(thisArg, x), or if it throws, *return* the exception
+			 */
+			function tryCatchReturn(f, x, thisArg, next) {
+				try {
+					next.notify(f.call(thisArg, x));
+				} catch(e) {
+					next.notify(e);
+				}
+			}
+
+			function inherit(Parent, Child) {
+				Child.prototype = objectCreate(Parent.prototype);
+				Child.prototype.constructor = Child;
+			}
+
+			function snd(x, y) {
+				return y;
+			}
+
+			function noop() {}
+
+			function initEmitRejection() {
+				/*global process, self, CustomEvent*/
+				if(typeof process !== 'undefined' && process !== null
+					&& typeof process.emit === 'function') {
+					// Returning falsy here means to call the default
+					// onPotentiallyUnhandledRejection API.  This is safe even in
+					// browserify since process.emit always returns falsy in browserify:
+					// https://github.com/defunctzombie/node-process/blob/master/browser.js#L40-L46
+					return function(type, rejection) {
+						return type === 'unhandledRejection'
+							? process.emit(type, rejection.value, rejection)
+							: process.emit(type, rejection);
+					};
+				} else if(typeof self !== 'undefined' && typeof CustomEvent === 'function') {
+					return (function(noop, self, CustomEvent) {
+						var hasCustomEvent = false;
+						try {
+							var ev = new CustomEvent('unhandledRejection');
+							hasCustomEvent = ev instanceof CustomEvent;
+						} catch (e) {}
+
+						return !hasCustomEvent ? noop : function(type, rejection) {
+							var ev = new CustomEvent(type, {
+								detail: {
+									reason: rejection.value,
+									key: rejection
+								},
+								bubbles: false,
+								cancelable: true
+							});
+
+							return !self.dispatchEvent(ev);
+						};
+					}(noop, self, CustomEvent));
+				}
+
+				return noop;
+			}
+
+			return Promise;
+		};
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(22)))
+
+/***/ },
+/* 67 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/** @license MIT License (c) copyright 2010-2014 original author or authors */
+	/** @author Brian Cavalier */
+	/** @author John Hann */
+
+	(function(define) { 'use strict';
+	!(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+
+		// Credit to Twisol (https://github.com/Twisol) for suggesting
+		// this type of extensible queue + trampoline approach for next-tick conflation.
+
+		/**
+		 * Async task scheduler
+		 * @param {function} async function to schedule a single async function
+		 * @constructor
+		 */
+		function Scheduler(async) {
+			this._async = async;
+			this._running = false;
+
+			this._queue = this;
+			this._queueLen = 0;
+			this._afterQueue = {};
+			this._afterQueueLen = 0;
+
+			var self = this;
+			this.drain = function() {
+				self._drain();
+			};
+		}
+
+		/**
+		 * Enqueue a task
+		 * @param {{ run:function }} task
+		 */
+		Scheduler.prototype.enqueue = function(task) {
+			this._queue[this._queueLen++] = task;
+			this.run();
+		};
+
+		/**
+		 * Enqueue a task to run after the main task queue
+		 * @param {{ run:function }} task
+		 */
+		Scheduler.prototype.afterQueue = function(task) {
+			this._afterQueue[this._afterQueueLen++] = task;
+			this.run();
+		};
+
+		Scheduler.prototype.run = function() {
+			if (!this._running) {
+				this._running = true;
+				this._async(this.drain);
+			}
+		};
+
+		/**
+		 * Drain the handler queue entirely, and then the after queue
+		 */
+		Scheduler.prototype._drain = function() {
+			var i = 0;
+			for (; i < this._queueLen; ++i) {
+				this._queue[i].run();
+				this._queue[i] = void 0;
+			}
+
+			this._queueLen = 0;
+			this._running = false;
+
+			for (i = 0; i < this._afterQueueLen; ++i) {
+				this._afterQueue[i].run();
+				this._afterQueue[i] = void 0;
+			}
+
+			this._afterQueueLen = 0;
+		};
+
+		return Scheduler;
+
+	}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}(__webpack_require__(47)));
+
+
+/***/ },
+/* 68 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2013 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define, location) {
+		'use strict';
+
+		var undef;
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var mixin, origin, urlRE, absoluteUrlRE, fullyQualifiedUrlRE;
+
+			mixin = __webpack_require__(69);
+
+			urlRE = /([a-z][a-z0-9\+\-\.]*:)\/\/([^@]+@)?(([^:\/]+)(:([0-9]+))?)?(\/[^?#]*)?(\?[^#]*)?(#\S*)?/i;
+			absoluteUrlRE = /^([a-z][a-z0-9\-\+\.]*:\/\/|\/)/i;
+			fullyQualifiedUrlRE = /([a-z][a-z0-9\+\-\.]*:)\/\/([^@]+@)?(([^:\/]+)(:([0-9]+))?)?\//i;
+
+			/**
+			 * Apply params to the template to create a URL.
+			 *
+			 * Parameters that are not applied directly to the template, are appended
+			 * to the URL as query string parameters.
+			 *
+			 * @param {string} template the URI template
+			 * @param {Object} params parameters to apply to the template
+			 * @return {string} the resulting URL
+			 */
+			function buildUrl(template, params) {
+				// internal builder to convert template with params.
+				var url, name, queryStringParams, re;
+
+				url = template;
+				queryStringParams = {};
+
+				if (params) {
+					for (name in params) {
+						/*jshint forin:false */
+						re = new RegExp('\\{' + name + '\\}');
+						if (re.test(url)) {
+							url = url.replace(re, encodeURIComponent(params[name]), 'g');
+						}
+						else {
+							queryStringParams[name] = params[name];
+						}
+					}
+					for (name in queryStringParams) {
+						url += url.indexOf('?') === -1 ? '?' : '&';
+						url += encodeURIComponent(name);
+						if (queryStringParams[name] !== null && queryStringParams[name] !== undefined) {
+							url += '=';
+							url += encodeURIComponent(queryStringParams[name]);
+						}
+					}
+				}
+				return url;
+			}
+
+			function startsWith(str, test) {
+				return str.indexOf(test) === 0;
+			}
+
+			/**
+			 * Create a new URL Builder
+			 *
+			 * @param {string|UrlBuilder} template the base template to build from, may be another UrlBuilder
+			 * @param {Object} [params] base parameters
+			 * @constructor
+			 */
+			function UrlBuilder(template, params) {
+				if (!(this instanceof UrlBuilder)) {
+					// invoke as a constructor
+					return new UrlBuilder(template, params);
+				}
+
+				if (template instanceof UrlBuilder) {
+					this._template = template.template;
+					this._params = mixin({}, this._params, params);
+				}
+				else {
+					this._template = (template || '').toString();
+					this._params = params || {};
+				}
+			}
+
+			UrlBuilder.prototype = {
+
+				/**
+				 * Create a new UrlBuilder instance that extends the current builder.
+				 * The current builder is unmodified.
+				 *
+				 * @param {string} [template] URL template to append to the current template
+				 * @param {Object} [params] params to combine with current params.  New params override existing params
+				 * @return {UrlBuilder} the new builder
+				 */
+				append: function (template,  params) {
+					// TODO consider query strings and fragments
+					return new UrlBuilder(this._template + template, mixin({}, this._params, params));
+				},
+
+				/**
+				 * Create a new UrlBuilder with a fully qualified URL based on the
+				 * window's location or base href and the current templates relative URL.
+				 *
+				 * Path variables are preserved.
+				 *
+				 * *Browser only*
+				 *
+				 * @return {UrlBuilder} the fully qualified URL template
+				 */
+				fullyQualify: function () {
+					if (!location) { return this; }
+					if (this.isFullyQualified()) { return this; }
+
+					var template = this._template;
+
+					if (startsWith(template, '//')) {
+						template = origin.protocol + template;
+					}
+					else if (startsWith(template, '/')) {
+						template = origin.origin + template;
+					}
+					else if (!this.isAbsolute()) {
+						template = origin.origin + origin.pathname.substring(0, origin.pathname.lastIndexOf('/') + 1);
+					}
+
+					if (template.indexOf('/', 8) === -1) {
+						// default the pathname to '/'
+						template = template + '/';
+					}
+
+					return new UrlBuilder(template, this._params);
+				},
+
+				/**
+				 * True if the URL is absolute
+				 *
+				 * @return {boolean}
+				 */
+				isAbsolute: function () {
+					return absoluteUrlRE.test(this.build());
+				},
+
+				/**
+				 * True if the URL is fully qualified
+				 *
+				 * @return {boolean}
+				 */
+				isFullyQualified: function () {
+					return fullyQualifiedUrlRE.test(this.build());
+				},
+
+				/**
+				 * True if the URL is cross origin. The protocol, host and port must not be
+				 * the same in order to be cross origin,
+				 *
+				 * @return {boolean}
+				 */
+				isCrossOrigin: function () {
+					if (!origin) {
+						return true;
+					}
+					var url = this.parts();
+					return url.protocol !== origin.protocol ||
+					       url.hostname !== origin.hostname ||
+					       url.port !== origin.port;
+				},
+
+				/**
+				 * Split a URL into its consituent parts following the naming convention of
+				 * 'window.location'. One difference is that the port will contain the
+				 * protocol default if not specified.
+				 *
+				 * @see https://developer.mozilla.org/en-US/docs/DOM/window.location
+				 *
+				 * @returns {Object} a 'window.location'-like object
+				 */
+				parts: function () {
+					/*jshint maxcomplexity:20 */
+					var url, parts;
+					url = this.fullyQualify().build().match(urlRE);
+					parts = {
+						href: url[0],
+						protocol: url[1],
+						host: url[3] || '',
+						hostname: url[4] || '',
+						port: url[6],
+						pathname: url[7] || '',
+						search: url[8] || '',
+						hash: url[9] || ''
+					};
+					parts.origin = parts.protocol + '//' + parts.host;
+					parts.port = parts.port || (parts.protocol === 'https:' ? '443' : parts.protocol === 'http:' ? '80' : '');
+					return parts;
+				},
+
+				/**
+				 * Expand the template replacing path variables with parameters
+				 *
+				 * @param {Object} [params] params to combine with current params.  New params override existing params
+				 * @return {string} the expanded URL
+				 */
+				build: function (params) {
+					return buildUrl(this._template, mixin({}, this._params, params));
+				},
+
+				/**
+				 * @see build
+				 */
+				toString: function () {
+					return this.build();
+				}
+
+			};
+
+			origin = location ? new UrlBuilder(location.href).parts() : undef;
+
+			return UrlBuilder;
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47),
+		typeof window !== 'undefined' ? window.location : void 0
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 69 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2013 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		// derived from dojo.mixin
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			var empty = {};
+
+			/**
+			 * Mix the properties from the source object into the destination object.
+			 * When the same property occurs in more then one object, the right most
+			 * value wins.
+			 *
+			 * @param {Object} dest the object to copy properties to
+			 * @param {Object} sources the objects to copy properties from.  May be 1 to N arguments, but not an Array.
+			 * @return {Object} the destination object
+			 */
+			function mixin(dest /*, sources... */) {
+				var i, l, source, name;
+
+				if (!dest) { dest = {}; }
+				for (i = 1, l = arguments.length; i < l; i += 1) {
+					source = arguments[i];
+					for (name in source) {
+						if (!(name in dest) || (dest[name] !== source[name] && (!(name in empty) || empty[name] !== source[name]))) {
+							dest[name] = source[name];
+						}
+					}
+				}
+
+				return dest; // Object
+			}
+
+			return mixin;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 70 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			/**
+			 * Normalize HTTP header names using the pseudo camel case.
+			 *
+			 * For example:
+			 *   content-type         -> Content-Type
+			 *   accepts              -> Accepts
+			 *   x-custom-header-name -> X-Custom-Header-Name
+			 *
+			 * @param {string} name the raw header name
+			 * @return {string} the normalized header name
+			 */
+			function normalizeHeaderName(name) {
+				return name.toLowerCase()
+					.split('-')
+					.map(function (chunk) { return chunk.charAt(0).toUpperCase() + chunk.slice(1); })
+					.join('-');
+			}
+
+			return normalizeHeaderName;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 71 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2014-2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var when = __webpack_require__(49),
+				normalizeHeaderName = __webpack_require__(70);
+
+			function property(promise, name) {
+				return promise.then(
+					function (value) {
+						return value && value[name];
+					},
+					function (value) {
+						return when.reject(value && value[name]);
+					}
+				);
+			}
+
+			/**
+			 * Obtain the response entity
+			 *
+			 * @returns {Promise} for the response entity
+			 */
+			function entity() {
+				/*jshint validthis:true */
+				return property(this, 'entity');
+			}
+
+			/**
+			 * Obtain the response status
+			 *
+			 * @returns {Promise} for the response status
+			 */
+			function status() {
+				/*jshint validthis:true */
+				return property(property(this, 'status'), 'code');
+			}
+
+			/**
+			 * Obtain the response headers map
+			 *
+			 * @returns {Promise} for the response headers map
+			 */
+			function headers() {
+				/*jshint validthis:true */
+				return property(this, 'headers');
+			}
+
+			/**
+			 * Obtain a specific response header
+			 *
+			 * @param {String} headerName the header to retrieve
+			 * @returns {Promise} for the response header's value
+			 */
+			function header(headerName) {
+				/*jshint validthis:true */
+				headerName = normalizeHeaderName(headerName);
+				return property(this.headers(), headerName);
+			}
+
+			/**
+			 * Follow a related resource
+			 *
+			 * The relationship to follow may be define as a plain string, an object
+			 * with the rel and params, or an array containing one or more entries
+			 * with the previous forms.
+			 *
+			 * Examples:
+			 *   response.follow('next')
+			 *
+			 *   response.follow({ rel: 'next', params: { pageSize: 100 } })
+			 *
+			 *   response.follow([
+			 *       { rel: 'items', params: { projection: 'noImages' } },
+			 *       'search',
+			 *       { rel: 'findByGalleryIsNull', params: { projection: 'noImages' } },
+			 *       'items'
+			 *   ])
+			 *
+			 * @param {String|Object|Array} rels one, or more, relationships to follow
+			 * @returns ResponsePromise<Response> related resource
+			 */
+			function follow(rels) {
+				/*jshint validthis:true */
+				rels = [].concat(rels);
+				return make(when.reduce(rels, function (response, rel) {
+					if (typeof rel === 'string') {
+						rel = { rel: rel };
+					}
+					if (typeof response.entity.clientFor !== 'function') {
+						throw new Error('Hypermedia response expected');
+					}
+					var client = response.entity.clientFor(rel.rel);
+					return client({ params: rel.params });
+				}, this));
+			}
+
+			/**
+			 * Wrap a Promise as an ResponsePromise
+			 *
+			 * @param {Promise<Response>} promise the promise for an HTTP Response
+			 * @returns {ResponsePromise<Response>} wrapped promise for Response with additional helper methods
+			 */
+			function make(promise) {
+				promise.status = status;
+				promise.headers = headers;
+				promise.header = header;
+				promise.entity = entity;
+				promise.follow = follow;
+				return promise;
+			}
+
+			function responsePromise() {
+				return make(when.apply(when, arguments));
+			}
+
+			responsePromise.make = make;
+			responsePromise.reject = function (val) {
+				return make(when.reject(val));
+			};
+			responsePromise.promise = function (func) {
+				return make(when.promise(func));
+			};
+
+			return responsePromise;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 72 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var interceptor, mime, registry, noopConverter, when;
+
+			interceptor = __webpack_require__(73);
+			mime = __webpack_require__(74);
+			registry = __webpack_require__(75);
+			when = __webpack_require__(49);
+
+			noopConverter = {
+				read: function (obj) { return obj; },
+				write: function (obj) { return obj; }
+			};
+
+			/**
+			 * MIME type support for request and response entities.  Entities are
+			 * (de)serialized using the converter for the MIME type.
+			 *
+			 * Request entities are converted using the desired converter and the
+			 * 'Accept' request header prefers this MIME.
+			 *
+			 * Response entities are converted based on the Content-Type response header.
+			 *
+			 * @param {Client} [client] client to wrap
+			 * @param {string} [config.mime='text/plain'] MIME type to encode the request
+			 *   entity
+			 * @param {string} [config.accept] Accept header for the request
+			 * @param {Client} [config.client=<request.originator>] client passed to the
+			 *   converter, defaults to the client originating the request
+			 * @param {Registry} [config.registry] MIME registry, defaults to the root
+			 *   registry
+			 * @param {boolean} [config.permissive] Allow an unkown request MIME type
+			 *
+			 * @returns {Client}
+			 */
+			return interceptor({
+				init: function (config) {
+					config.registry = config.registry || registry;
+					return config;
+				},
+				request: function (request, config) {
+					var type, headers;
+
+					headers = request.headers || (request.headers = {});
+					type = mime.parse(headers['Content-Type'] = headers['Content-Type'] || config.mime || 'text/plain');
+					headers.Accept = headers.Accept || config.accept || type.raw + ', application/json;q=0.8, text/plain;q=0.5, */*;q=0.2';
+
+					if (!('entity' in request)) {
+						return request;
+					}
+
+					return config.registry.lookup(type).otherwise(function () {
+						// failed to resolve converter
+						if (config.permissive) {
+							return noopConverter;
+						}
+						throw 'mime-unknown';
+					}).then(function (converter) {
+						var client = config.client || request.originator;
+
+						return when.attempt(converter.write, request.entity, { client: client, request: request, mime: type, registry: config.registry })
+							.otherwise(function() {
+								throw 'mime-serialization';
+							})
+							.then(function(entity) {
+								request.entity = entity;
+								return request;
+							});
+					});
+				},
+				response: function (response, config) {
+					if (!(response.headers && response.headers['Content-Type'] && response.entity)) {
+						return response;
+					}
+
+					var type = mime.parse(response.headers['Content-Type']);
+
+					return config.registry.lookup(type).otherwise(function () { return noopConverter; }).then(function (converter) {
+						var client = config.client || response.request && response.request.originator;
+
+						return when.attempt(converter.read, response.entity, { client: client, response: response, mime: type, registry: config.registry })
+							.otherwise(function (e) {
+								response.error = 'mime-deserialization';
+								response.cause = e;
+								throw response;
+							})
+							.then(function (entity) {
+								response.entity = entity;
+								return response;
+							});
+					});
+				}
+			});
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 73 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var defaultClient, mixin, responsePromise, client, when;
+
+			defaultClient = __webpack_require__(45);
+			mixin = __webpack_require__(69);
+			responsePromise = __webpack_require__(71);
+			client = __webpack_require__(46);
+			when = __webpack_require__(49);
+
+			/**
+			 * Interceptors have the ability to intercept the request and/org response
+			 * objects.  They may augment, prune, transform or replace the
+			 * request/response as needed.  Clients may be composed by wrapping
+			 * together multiple interceptors.
+			 *
+			 * Configured interceptors are functional in nature.  Wrapping a client in
+			 * an interceptor will not affect the client, merely the data that flows in
+			 * and out of that client.  A common configuration can be created once and
+			 * shared; specialization can be created by further wrapping that client
+			 * with custom interceptors.
+			 *
+			 * @param {Client} [target] client to wrap
+			 * @param {Object} [config] configuration for the interceptor, properties will be specific to the interceptor implementation
+			 * @returns {Client} A client wrapped with the interceptor
+			 *
+			 * @class Interceptor
+			 */
+
+			function defaultInitHandler(config) {
+				return config;
+			}
+
+			function defaultRequestHandler(request /*, config, meta */) {
+				return request;
+			}
+
+			function defaultResponseHandler(response /*, config, meta */) {
+				return response;
+			}
+
+			function race(promisesOrValues) {
+				// this function is different than when.any as the first to reject also wins
+				return when.promise(function (resolve, reject) {
+					promisesOrValues.forEach(function (promiseOrValue) {
+						when(promiseOrValue, resolve, reject);
+					});
+				});
+			}
+
+			/**
+			 * Alternate return type for the request handler that allows for more complex interactions.
+			 *
+			 * @param properties.request the traditional request return object
+			 * @param {Promise} [properties.abort] promise that resolves if/when the request is aborted
+			 * @param {Client} [properties.client] override the defined client with an alternate client
+			 * @param [properties.response] response for the request, short circuit the request
+			 */
+			function ComplexRequest(properties) {
+				if (!(this instanceof ComplexRequest)) {
+					// in case users forget the 'new' don't mix into the interceptor
+					return new ComplexRequest(properties);
+				}
+				mixin(this, properties);
+			}
+
+			/**
+			 * Create a new interceptor for the provided handlers.
+			 *
+			 * @param {Function} [handlers.init] one time intialization, must return the config object
+			 * @param {Function} [handlers.request] request handler
+			 * @param {Function} [handlers.response] response handler regardless of error state
+			 * @param {Function} [handlers.success] response handler when the request is not in error
+			 * @param {Function} [handlers.error] response handler when the request is in error, may be used to 'unreject' an error state
+			 * @param {Function} [handlers.client] the client to use if otherwise not specified, defaults to platform default client
+			 *
+			 * @returns {Interceptor}
+			 */
+			function interceptor(handlers) {
+
+				var initHandler, requestHandler, successResponseHandler, errorResponseHandler;
+
+				handlers = handlers || {};
+
+				initHandler            = handlers.init    || defaultInitHandler;
+				requestHandler         = handlers.request || defaultRequestHandler;
+				successResponseHandler = handlers.success || handlers.response || defaultResponseHandler;
+				errorResponseHandler   = handlers.error   || function () {
+					// Propagate the rejection, with the result of the handler
+					return when((handlers.response || defaultResponseHandler).apply(this, arguments), when.reject, when.reject);
+				};
+
+				return function (target, config) {
+
+					if (typeof target === 'object') {
+						config = target;
+					}
+					if (typeof target !== 'function') {
+						target = handlers.client || defaultClient;
+					}
+
+					config = initHandler(config || {});
+
+					function interceptedClient(request) {
+						var context, meta;
+						context = {};
+						meta = { 'arguments': Array.prototype.slice.call(arguments), client: interceptedClient };
+						request = typeof request === 'string' ? { path: request } : request || {};
+						request.originator = request.originator || interceptedClient;
+						return responsePromise(
+							requestHandler.call(context, request, config, meta),
+							function (request) {
+								var response, abort, next;
+								next = target;
+								if (request instanceof ComplexRequest) {
+									// unpack request
+									abort = request.abort;
+									next = request.client || next;
+									response = request.response;
+									// normalize request, must be last
+									request = request.request;
+								}
+								response = response || when(request, function (request) {
+									return when(
+										next(request),
+										function (response) {
+											return successResponseHandler.call(context, response, config, meta);
+										},
+										function (response) {
+											return errorResponseHandler.call(context, response, config, meta);
+										}
+									);
+								});
+								return abort ? race([response, abort]) : response;
+							},
+							function (error) {
+								return when.reject({ request: request, error: error });
+							}
+						);
+					}
+
+					return client(interceptedClient, target);
+				};
+			}
+
+			interceptor.ComplexRequest = ComplexRequest;
+
+			return interceptor;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 74 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	* Copyright 2014 the original author or authors
+	* @license MIT, see LICENSE.txt for details
+	*
+	* @author Scott Andrews
+	*/
+
+	(function (define) {
+		'use strict';
+
+		var undef;
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			/**
+			 * Parse a MIME type into it's constituent parts
+			 *
+			 * @param {string} mime MIME type to parse
+			 * @return {{
+			 *   {string} raw the original MIME type
+			 *   {string} type the type and subtype
+			 *   {string} [suffix] mime suffix, including the plus, if any
+			 *   {Object} params key/value pair of attributes
+			 * }}
+			 */
+			function parse(mime) {
+				var params, type;
+
+				params = mime.split(';');
+				type = params[0].trim().split('+');
+
+				return {
+					raw: mime,
+					type: type[0],
+					suffix: type[1] ? '+' + type[1] : '',
+					params: params.slice(1).reduce(function (params, pair) {
+						pair = pair.split('=');
+						params[pair[0].trim()] = pair[1] ? pair[1].trim() : undef;
+						return params;
+					}, {})
+				};
+			}
+
+			return {
+				parse: parse
+			};
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 75 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var mime, when, registry;
+
+			mime = __webpack_require__(74);
+			when = __webpack_require__(49);
+
+			function Registry(mimes) {
+
+				/**
+				 * Lookup the converter for a MIME type
+				 *
+				 * @param {string} type the MIME type
+				 * @return a promise for the converter
+				 */
+				this.lookup = function lookup(type) {
+					var parsed;
+
+					parsed = typeof type === 'string' ? mime.parse(type) : type;
+
+					if (mimes[parsed.raw]) {
+						return mimes[parsed.raw];
+					}
+					if (mimes[parsed.type + parsed.suffix]) {
+						return mimes[parsed.type + parsed.suffix];
+					}
+					if (mimes[parsed.type]) {
+						return mimes[parsed.type];
+					}
+					if (mimes[parsed.suffix]) {
+						return mimes[parsed.suffix];
+					}
+
+					return when.reject(new Error('Unable to locate converter for mime "' + parsed.raw + '"'));
+				};
+
+				/**
+				 * Create a late dispatched proxy to the target converter.
+				 *
+				 * Common when a converter is registered under multiple names and
+				 * should be kept in sync if updated.
+				 *
+				 * @param {string} type mime converter to dispatch to
+				 * @returns converter whose read/write methods target the desired mime converter
+				 */
+				this.delegate = function delegate(type) {
+					return {
+						read: function () {
+							var args = arguments;
+							return this.lookup(type).then(function (converter) {
+								return converter.read.apply(this, args);
+							}.bind(this));
+						}.bind(this),
+						write: function () {
+							var args = arguments;
+							return this.lookup(type).then(function (converter) {
+								return converter.write.apply(this, args);
+							}.bind(this));
+						}.bind(this)
+					};
+				};
+
+				/**
+				 * Register a custom converter for a MIME type
+				 *
+				 * @param {string} type the MIME type
+				 * @param converter the converter for the MIME type
+				 * @return a promise for the converter
+				 */
+				this.register = function register(type, converter) {
+					mimes[type] = when(converter);
+					return mimes[type];
+				};
+
+				/**
+				 * Create a child registry whoes registered converters remain local, while
+				 * able to lookup converters from its parent.
+				 *
+				 * @returns child MIME registry
+				 */
+				this.child = function child() {
+					return new Registry(Object.create(mimes));
+				};
+
+			}
+
+			registry = new Registry({});
+
+			// include provided serializers
+			registry.register('application/hal', __webpack_require__(76));
+			registry.register('application/json', __webpack_require__(83));
+			registry.register('application/x-www-form-urlencoded', __webpack_require__(84));
+			registry.register('multipart/form-data', __webpack_require__(85));
+			registry.register('text/plain', __webpack_require__(86));
+
+			registry.register('+json', registry.delegate('application/json'));
+
+			return registry;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 76 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2013-2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var pathPrefix, template, find, lazyPromise, responsePromise, when;
+
+			pathPrefix = __webpack_require__(77);
+			template = __webpack_require__(78);
+			find = __webpack_require__(81);
+			lazyPromise = __webpack_require__(82);
+			responsePromise = __webpack_require__(71);
+			when = __webpack_require__(49);
+
+			function defineProperty(obj, name, value) {
+				Object.defineProperty(obj, name, {
+					value: value,
+					configurable: true,
+					enumerable: false,
+					writeable: true
+				});
+			}
+
+			/**
+			 * Hypertext Application Language serializer
+			 *
+			 * Implemented to https://tools.ietf.org/html/draft-kelly-json-hal-06
+			 *
+			 * As the spec is still a draft, this implementation will be updated as the
+			 * spec evolves
+			 *
+			 * Objects are read as HAL indexing links and embedded objects on to the
+			 * resource. Objects are written as plain JSON.
+			 *
+			 * Embedded relationships are indexed onto the resource by the relationship
+			 * as a promise for the related resource.
+			 *
+			 * Links are indexed onto the resource as a lazy promise that will GET the
+			 * resource when a handler is first registered on the promise.
+			 *
+			 * A `requestFor` method is added to the entity to make a request for the
+			 * relationship.
+			 *
+			 * A `clientFor` method is added to the entity to get a full Client for a
+			 * relationship.
+			 *
+			 * The `_links` and `_embedded` properties on the resource are made
+			 * non-enumerable.
+			 */
+			return {
+
+				read: function (str, opts) {
+					var client, console;
+
+					opts = opts || {};
+					client = opts.client;
+					console = opts.console || console;
+
+					function deprecationWarning(relationship, deprecation) {
+						if (deprecation && console && console.warn || console.log) {
+							(console.warn || console.log).call(console, 'Relationship \'' + relationship + '\' is deprecated, see ' + deprecation);
+						}
+					}
+
+					return opts.registry.lookup(opts.mime.suffix).then(function (converter) {
+						return when(converter.read(str, opts)).then(function (root) {
+
+							find.findProperties(root, '_embedded', function (embedded, resource, name) {
+								Object.keys(embedded).forEach(function (relationship) {
+									if (relationship in resource) { return; }
+									var related = responsePromise({
+										entity: embedded[relationship]
+									});
+									defineProperty(resource, relationship, related);
+								});
+								defineProperty(resource, name, embedded);
+							});
+							find.findProperties(root, '_links', function (links, resource, name) {
+								Object.keys(links).forEach(function (relationship) {
+									var link = links[relationship];
+									if (relationship in resource) { return; }
+									defineProperty(resource, relationship, responsePromise.make(lazyPromise(function () {
+										if (link.deprecation) { deprecationWarning(relationship, link.deprecation); }
+										if (link.templated === true) {
+											return template(client)({ path: link.href });
+										}
+										return client({ path: link.href });
+									})));
+								});
+								defineProperty(resource, name, links);
+								defineProperty(resource, 'clientFor', function (relationship, clientOverride) {
+									var link = links[relationship];
+									if (!link) {
+										throw new Error('Unknown relationship: ' + relationship);
+									}
+									if (link.deprecation) { deprecationWarning(relationship, link.deprecation); }
+									if (link.templated === true) {
+										return template(
+											clientOverride || client,
+											{ template: link.href }
+										);
+									}
+									return pathPrefix(
+										clientOverride || client,
+										{ prefix: link.href }
+									);
+								});
+								defineProperty(resource, 'requestFor', function (relationship, request, clientOverride) {
+									var client = this.clientFor(relationship, clientOverride);
+									return client(request);
+								});
+							});
+
+							return root;
+						});
+					});
+
+				},
+
+				write: function (obj, opts) {
+					return opts.registry.lookup(opts.mime.suffix).then(function (converter) {
+						return converter.write(obj, opts);
+					});
+				}
+
+			};
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 77 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2013 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var interceptor, UrlBuilder;
+
+			interceptor = __webpack_require__(73);
+			UrlBuilder = __webpack_require__(68);
+
+			function startsWith(str, prefix) {
+				return str.indexOf(prefix) === 0;
+			}
+
+			function endsWith(str, suffix) {
+				return str.lastIndexOf(suffix) + suffix.length === str.length;
+			}
+
+			/**
+			 * Prefixes the request path with a common value.
+			 *
+			 * @param {Client} [client] client to wrap
+			 * @param {number} [config.prefix] path prefix
+			 *
+			 * @returns {Client}
+			 */
+			return interceptor({
+				request: function (request, config) {
+					var path;
+
+					if (config.prefix && !(new UrlBuilder(request.path).isFullyQualified())) {
+						path = config.prefix;
+						if (request.path) {
+							if (!endsWith(path, '/') && !startsWith(request.path, '/')) {
+								// add missing '/' between path sections
+								path += '/';
+							}
+							path += request.path;
+						}
+						request.path = path;
+					}
+
+					return request;
+				}
+			});
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 78 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var interceptor, uriTemplate, mixin;
+
+			interceptor = __webpack_require__(73);
+			uriTemplate = __webpack_require__(79);
+			mixin = __webpack_require__(69);
+
+			/**
+			 * Applies request params to the path as a URI Template
+			 *
+			 * Params are removed from the request object, as they have been consumed.
+			 *
+			 * @see https://tools.ietf.org/html/rfc6570
+			 *
+			 * @param {Client} [client] client to wrap
+			 * @param {Object} [config.params] default param values
+			 * @param {string} [config.template] default template
+			 *
+			 * @returns {Client}
+			 */
+			return interceptor({
+				init: function (config) {
+					config.params = config.params || {};
+					config.template = config.template || '';
+					return config;
+				},
+				request: function (request, config) {
+					var template, params;
+
+					template = request.path || config.template;
+					params = mixin({}, request.params, config.params);
+
+					request.path = uriTemplate.expand(template, params);
+					delete request.params;
+
+					return request;
+				}
+			});
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 79 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		var undef;
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var uriEncoder, operations, prefixRE;
+
+			uriEncoder = __webpack_require__(80);
+
+			prefixRE = /^([^:]*):([0-9]+)$/;
+			operations = {
+				'':  { first: '',  separator: ',', named: false, empty: '',  encoder: uriEncoder.encode },
+				'+': { first: '',  separator: ',', named: false, empty: '',  encoder: uriEncoder.encodeURL },
+				'#': { first: '#', separator: ',', named: false, empty: '',  encoder: uriEncoder.encodeURL },
+				'.': { first: '.', separator: '.', named: false, empty: '',  encoder: uriEncoder.encode },
+				'/': { first: '/', separator: '/', named: false, empty: '',  encoder: uriEncoder.encode },
+				';': { first: ';', separator: ';', named: true,  empty: '',  encoder: uriEncoder.encode },
+				'?': { first: '?', separator: '&', named: true,  empty: '=', encoder: uriEncoder.encode },
+				'&': { first: '&', separator: '&', named: true,  empty: '=', encoder: uriEncoder.encode },
+				'=': { reserved: true },
+				',': { reserved: true },
+				'!': { reserved: true },
+				'@': { reserved: true },
+				'|': { reserved: true }
+			};
+
+			function apply(operation, expression, params) {
+				/*jshint maxcomplexity:11 */
+				return expression.split(',').reduce(function (result, variable) {
+					var opts, value;
+
+					opts = {};
+					if (variable.slice(-1) === '*') {
+						variable = variable.slice(0, -1);
+						opts.explode = true;
+					}
+					if (prefixRE.test(variable)) {
+						var prefix = prefixRE.exec(variable);
+						variable = prefix[1];
+						opts.maxLength = parseInt(prefix[2]);
+					}
+
+					variable = uriEncoder.decode(variable);
+					value = params[variable];
+
+					if (value === undef || value === null) {
+						return result;
+					}
+					if (Array.isArray(value)) {
+						result += value.reduce(function (result, value) {
+							if (result.length) {
+								result += opts.explode ? operation.separator : ',';
+								if (operation.named && opts.explode) {
+									result += operation.encoder(variable);
+									result += value.length ? '=' : operation.empty;
+								}
+							}
+							else {
+								result += operation.first;
+								if (operation.named) {
+									result += operation.encoder(variable);
+									result += value.length ? '=' : operation.empty;
+								}
+							}
+							result += operation.encoder(value);
+							return result;
+						}, '');
+					}
+					else if (typeof value === 'object') {
+						result += Object.keys(value).reduce(function (result, name) {
+							if (result.length) {
+								result += opts.explode ? operation.separator : ',';
+							}
+							else {
+								result += operation.first;
+								if (operation.named && !opts.explode) {
+									result += operation.encoder(variable);
+									result += value[name].length ? '=' : operation.empty;
+								}
+							}
+							result += operation.encoder(name);
+							result += opts.explode ? '=' : ',';
+							result += operation.encoder(value[name]);
+							return result;
+						}, '');
+					}
+					else {
+						value = String(value);
+						if (opts.maxLength) {
+							value = value.slice(0, opts.maxLength);
+						}
+						result += result.length ? operation.separator : operation.first;
+						if (operation.named) {
+							result += operation.encoder(variable);
+							result += value.length ? '=' : operation.empty;
+						}
+						result += operation.encoder(value);
+					}
+
+					return result;
+				}, '');
+			}
+
+			function expandExpression(expression, params) {
+				var operation;
+
+				operation = operations[expression.slice(0,1)];
+				if (operation) {
+					expression = expression.slice(1);
+				}
+				else {
+					operation = operations[''];
+				}
+
+				if (operation.reserved) {
+					throw new Error('Reserved expression operations are not supported');
+				}
+
+				return apply(operation, expression, params);
+			}
+
+			function expandTemplate(template, params) {
+				var start, end, uri;
+
+				uri = '';
+				end = 0;
+				while (true) {
+					start = template.indexOf('{', end);
+					if (start === -1) {
+						// no more expressions
+						uri += template.slice(end);
+						break;
+					}
+					uri += template.slice(end, start);
+					end = template.indexOf('}', start) + 1;
+					uri += expandExpression(template.slice(start + 1, end - 1), params);
+				}
+
+				return uri;
+			}
+
+			return {
+
+				/**
+				 * Expand a URI Template with parameters to form a URI.
+				 *
+				 * Full implementation (level 4) of rfc6570.
+				 * @see https://tools.ietf.org/html/rfc6570
+				 *
+				 * @param {string} template URI template
+				 * @param {Object} [params] params to apply to the template durring expantion
+				 * @returns {string} expanded URI
+				 */
+				expand: expandTemplate
+
+			};
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 80 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			var charMap;
+
+			charMap = (function () {
+				var strings = {
+					alpha: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+					digit: '0123456789'
+				};
+
+				strings.genDelims = ':/?#[]@';
+				strings.subDelims = '!$&\'()*+,;=';
+				strings.reserved = strings.genDelims + strings.subDelims;
+				strings.unreserved = strings.alpha + strings.digit + '-._~';
+				strings.url = strings.reserved + strings.unreserved;
+				strings.scheme = strings.alpha + strings.digit + '+-.';
+				strings.userinfo = strings.unreserved + strings.subDelims + ':';
+				strings.host = strings.unreserved + strings.subDelims;
+				strings.port = strings.digit;
+				strings.pchar = strings.unreserved + strings.subDelims + ':@';
+				strings.segment = strings.pchar;
+				strings.path = strings.segment + '/';
+				strings.query = strings.pchar + '/?';
+				strings.fragment = strings.pchar + '/?';
+
+				return Object.keys(strings).reduce(function (charMap, set) {
+					charMap[set] = strings[set].split('').reduce(function (chars, myChar) {
+						chars[myChar] = true;
+						return chars;
+					}, {});
+					return charMap;
+				}, {});
+			}());
+
+			function encode(str, allowed) {
+				if (typeof str !== 'string') {
+					throw new Error('String required for URL encoding');
+				}
+				return str.split('').map(function (myChar) {
+					if (allowed.hasOwnProperty(myChar)) {
+						return myChar;
+					}
+					var code = myChar.charCodeAt(0);
+					if (code <= 127) {
+						var encoded = code.toString(16).toUpperCase();
+						return '%' + (encoded.length % 2 === 1 ? '0' : '') + encoded;
+					}
+					else {
+						return encodeURIComponent(myChar).toUpperCase();
+					}
+				}).join('');
+			}
+
+			function makeEncoder(allowed) {
+				allowed = allowed || charMap.unreserved;
+				return function (str) {
+					return encode(str, allowed);
+				};
+			}
+
+			function decode(str) {
+				return decodeURIComponent(str);
+			}
+
+			return {
+
+				/*
+				 * Decode URL encoded strings
+				 *
+				 * @param {string} URL encoded string
+				 * @returns {string} URL decoded string
+				 */
+				decode: decode,
+
+				/*
+				 * URL encode a string
+				 *
+				 * All but alpha-numerics and a very limited set of punctuation - . _ ~ are
+				 * encoded.
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encode: makeEncoder(),
+
+				/*
+				* URL encode a URL
+				*
+				* All character permitted anywhere in a URL are left unencoded even
+				* if that character is not permitted in that portion of a URL.
+				*
+				* Note: This method is typically not what you want.
+				*
+				* @param {string} string to encode
+				* @returns {string} URL encoded string
+				*/
+				encodeURL: makeEncoder(charMap.url),
+
+				/*
+				 * URL encode the scheme portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodeScheme: makeEncoder(charMap.scheme),
+
+				/*
+				 * URL encode the user info portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodeUserInfo: makeEncoder(charMap.userinfo),
+
+				/*
+				 * URL encode the host portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodeHost: makeEncoder(charMap.host),
+
+				/*
+				 * URL encode the port portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodePort: makeEncoder(charMap.port),
+
+				/*
+				 * URL encode a path segment portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodePathSegment: makeEncoder(charMap.segment),
+
+				/*
+				 * URL encode the path portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodePath: makeEncoder(charMap.path),
+
+				/*
+				 * URL encode the query portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodeQuery: makeEncoder(charMap.query),
+
+				/*
+				 * URL encode the fragment portion of a URL
+				 *
+				 * @param {string} string to encode
+				 * @returns {string} URL encoded string
+				 */
+				encodeFragment: makeEncoder(charMap.fragment)
+
+			};
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 81 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2013 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			return {
+
+				/**
+				 * Find objects within a graph the contain a property of a certain name.
+				 *
+				 * NOTE: this method will not discover object graph cycles.
+				 *
+				 * @param {*} obj object to search on
+				 * @param {string} prop name of the property to search for
+				 * @param {Function} callback function to receive the found properties and their parent
+				 */
+				findProperties: function findProperties(obj, prop, callback) {
+					if (typeof obj !== 'object' || obj === null) { return; }
+					if (prop in obj) {
+						callback(obj[prop], obj, prop);
+					}
+					Object.keys(obj).forEach(function (key) {
+						findProperties(obj[key], prop, callback);
+					});
+				}
+
+			};
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 82 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2013 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (require) {
+
+			var when;
+
+			when = __webpack_require__(49);
+
+			/**
+			 * Create a promise whose work is started only when a handler is registered.
+			 *
+			 * The work function will be invoked at most once. Thrown values will result
+			 * in promise rejection.
+			 *
+			 * @param {Function} work function whose ouput is used to resolve the
+			 *   returned promise.
+			 * @returns {Promise} a lazy promise
+			 */
+			function lazyPromise(work) {
+				var defer, started, resolver, promise, then;
+
+				defer = when.defer();
+				started = false;
+
+				resolver = defer.resolver;
+				promise = defer.promise;
+				then = promise.then;
+
+				promise.then = function () {
+					if (!started) {
+						started = true;
+						when.attempt(work).then(resolver.resolve, resolver.reject);
+					}
+					return then.apply(promise, arguments);
+				};
+
+				return promise;
+			}
+
+			return lazyPromise;
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 83 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012-2015 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			/**
+			 * Create a new JSON converter with custom reviver/replacer.
+			 *
+			 * The extended converter must be published to a MIME registry in order
+			 * to be used. The existing converter will not be modified.
+			 *
+			 * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON
+			 *
+			 * @param {function} [reviver=undefined] custom JSON.parse reviver
+			 * @param {function|Array} [replacer=undefined] custom JSON.stringify replacer
+			 */
+			function createConverter(reviver, replacer) {
+				return {
+
+					read: function (str) {
+						return JSON.parse(str, reviver);
+					},
+
+					write: function (obj) {
+						return JSON.stringify(obj, replacer);
+					},
+
+					extend: createConverter
+
+				};
+			}
+
+			return createConverter();
+
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 84 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			var encodedSpaceRE, urlEncodedSpaceRE;
+
+			encodedSpaceRE = /%20/g;
+			urlEncodedSpaceRE = /\+/g;
+
+			function urlEncode(str) {
+				str = encodeURIComponent(str);
+				// spec says space should be encoded as '+'
+				return str.replace(encodedSpaceRE, '+');
+			}
+
+			function urlDecode(str) {
+				// spec says space should be encoded as '+'
+				str = str.replace(urlEncodedSpaceRE, ' ');
+				return decodeURIComponent(str);
+			}
+
+			function append(str, name, value) {
+				if (Array.isArray(value)) {
+					value.forEach(function (value) {
+						str = append(str, name, value);
+					});
+				}
+				else {
+					if (str.length > 0) {
+						str += '&';
+					}
+					str += urlEncode(name);
+					if (value !== undefined && value !== null) {
+						str += '=' + urlEncode(value);
+					}
+				}
+				return str;
+			}
+
+			return {
+
+				read: function (str) {
+					var obj = {};
+					str.split('&').forEach(function (entry) {
+						var pair, name, value;
+						pair = entry.split('=');
+						name = urlDecode(pair[0]);
+						if (pair.length === 2) {
+							value = urlDecode(pair[1]);
+						}
+						else {
+							value = null;
+						}
+						if (name in obj) {
+							if (!Array.isArray(obj[name])) {
+								// convert to an array, perserving currnent value
+								obj[name] = [obj[name]];
+							}
+							obj[name].push(value);
+						}
+						else {
+							obj[name] = value;
+						}
+					});
+					return obj;
+				},
+
+				write: function (obj) {
+					var str = '';
+					Object.keys(obj).forEach(function (name) {
+						str = append(str, name, obj[name]);
+					});
+					return str;
+				}
+
+			};
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 85 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2014 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Michael Jackson
+	 */
+
+	/* global FormData, File, Blob */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			function isFormElement(object) {
+				return object &&
+					object.nodeType === 1 && // Node.ELEMENT_NODE
+					object.tagName === 'FORM';
+			}
+
+			function createFormDataFromObject(object) {
+				var formData = new FormData();
+
+				var value;
+				for (var property in object) {
+					if (object.hasOwnProperty(property)) {
+						value = object[property];
+
+						if (value instanceof File) {
+							formData.append(property, value, value.name);
+						} else if (value instanceof Blob) {
+							formData.append(property, value);
+						} else {
+							formData.append(property, String(value));
+						}
+					}
+				}
+
+				return formData;
+			}
+
+			return {
+
+				write: function (object) {
+					if (typeof FormData === 'undefined') {
+						throw new Error('The multipart/form-data mime serializer requires FormData support');
+					}
+
+					// Support FormData directly.
+					if (object instanceof FormData) {
+						return object;
+					}
+
+					// Support <form> elements.
+					if (isFormElement(object)) {
+						return new FormData(object);
+					}
+
+					// Support plain objects, may contain File/Blob as value.
+					if (typeof object === 'object' && object !== null) {
+						return createFormDataFromObject(object);
+					}
+
+					throw new Error('Unable to create FormData from object ' + object);
+				}
+
+			};
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 86 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*
+	 * Copyright 2012 the original author or authors
+	 * @license MIT, see LICENSE.txt for details
+	 *
+	 * @author Scott Andrews
+	 */
+
+	(function (define) {
+		'use strict';
+
+		!(__WEBPACK_AMD_DEFINE_RESULT__ = function (/* require */) {
+
+			return {
+
+				read: function (str) {
+					return str;
+				},
+
+				write: function (obj) {
+					return obj.toString();
+				}
+
+			};
+		}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	}(
+		__webpack_require__(47)
+		// Boilerplate for AMD and Node
+	));
+
+
+/***/ },
+/* 87 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var jade = __webpack_require__(88);
 
 	module.exports = function template(locals) {
 	var jade_debug = [ new jade.DebugItem( 1, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ) ];
@@ -78177,22 +83737,46 @@
 
 	jade_debug.unshift(new jade.DebugItem( 0, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	jade_debug.unshift(new jade.DebugItem( 1, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
-	buf.push("<md-content layout=\"column\" class=\"package-finder\">");
+	buf.push("<md-content layout layout-fill>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
 	jade_debug.unshift(new jade.DebugItem( 2, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
-	buf.push("<md-toolbar>");
+	buf.push("<md-content layout=\"column\" class=\"package-finder flex\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
 	jade_debug.unshift(new jade.DebugItem( 3, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
-	buf.push("<div class=\"md-toolbar-tools\">");
+	buf.push("<md-toolbar>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
 	jade_debug.unshift(new jade.DebugItem( 4, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<div class=\"md-toolbar-tools\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 5, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<h3>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 4, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 5, jade_debug[0].filename ));
 	buf.push("JS Library Playground");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</h3>");
+	jade_debug.shift();
+	jade_debug.unshift(new jade.DebugItem( 6, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<span class=\"flex\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.shift();
+	buf.push("</span>");
+	jade_debug.shift();
+	jade_debug.unshift(new jade.DebugItem( 7, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-button ng-click=\"packageFinder.toggleDocs()\" class=\"md-icon-button\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 8, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-icon>");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 8, jade_debug[0].filename ));
+	buf.push("?");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-icon>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-button>");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</div>");
@@ -78200,42 +83784,42 @@
 	jade_debug.shift();
 	buf.push("</md-toolbar>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 5, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 9, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<md-content layout=\"column\" layout-margin>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 6, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 10, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<div class=\"add-package\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 7, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 11, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<h4>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 7, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 11, jade_debug[0].filename ));
 	buf.push("Add Package");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 8, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 12, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<small class=\"subhead\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 9, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 13, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("i like");
 	jade_debug.shift();
 	buf.push("\n");
-	jade_debug.unshift(new jade.DebugItem( 10, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 14, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push(" ");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 11, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 15, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<a href=\"https://rawgit.com/\" target=\"_blank\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 11, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 15, jade_debug[0].filename ));
 	buf.push("rawgit");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</a>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 12, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 16, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push(" ");
 	jade_debug.shift();
 	buf.push("\n");
-	jade_debug.unshift(new jade.DebugItem( 13, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 17, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("to host libs");
 	jade_debug.shift();
 	jade_debug.shift();
@@ -78244,70 +83828,109 @@
 	jade_debug.shift();
 	buf.push("</h4>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 14, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 19, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<div class=\"find-package\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 20, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-autocomplete md-selected-item=\"packageFinder.selectedPackage\" md-search-text=\"packageFinder.searchText\" md-items=\"item in packageFinder.search(packageFinder.searchText)\" md-selected-item-change=\"packageFinder.pickPackage(item)\" md-item-text=\"item.name\" md-floating-label=\"Search for cdnjs packages...\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 28, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-item-template>");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 29, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<span ng-bind-html=\"item._highlightResult.name.value\" class=\"package\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.shift();
+	buf.push("</span>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-item-template>");
+	jade_debug.shift();
+	jade_debug.unshift(new jade.DebugItem( 30, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-not-found>");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 31, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<span>");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 31, jade_debug[0].filename ));
+	buf.push("No results found");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</span>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-not-found>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-autocomplete>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</div>");
+	jade_debug.shift();
+	jade_debug.unshift(new jade.DebugItem( 32, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<div layout=\"row\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 33, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<md-input-container class=\"md-block\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 15, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 34, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<label>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 15, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 34, jade_debug[0].filename ));
 	buf.push("url to library");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</label>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 16, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 35, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<input name=\"new.path\" ng-change=\"packageFinder.updatePath()\" ng-model=\"packageFinder.new.path\" required>");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</md-input-container>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 22, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
-	buf.push("<div layout=\"row\">");
-	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 23, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 41, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<md-input-container class=\"md-block\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 24, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 42, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<label>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 24, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 42, jade_debug[0].filename ));
 	buf.push("name");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</label>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 25, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 43, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<input name=\"new.name\" ng-change=\"packageFinder.updateName()\" ng-model=\"packageFinder.new.name\" required>");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</md-input-container>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 31, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
-	buf.push("<md-input-container class=\"md-block\">");
+	jade_debug.unshift(new jade.DebugItem( 49, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-input-container class=\"md-block flex-15\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 32, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 50, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<label>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 32, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 50, jade_debug[0].filename ));
 	buf.push("alias");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</label>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 33, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 51, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<input name=\"new.alias\" ng-model=\"packageFinder.new.alias\">");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</md-input-container>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 37, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 55, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<div>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 38, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 56, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<md-button ng-click=\"packageFinder.addLib()\" class=\"md-raised\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 38, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 56, jade_debug[0].filename ));
 	buf.push("Add");
 	jade_debug.shift();
 	jade_debug.shift();
@@ -78322,46 +83945,46 @@
 	jade_debug.shift();
 	buf.push("</div>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 39, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 57, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<div class=\"package-list\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 40, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 58, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<h4>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 40, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 58, jade_debug[0].filename ));
 	buf.push("Packages");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</h4>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 41, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 59, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<div layout ng-repeat=\"item in packageFinder.packages\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 45, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 63, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<md-checkbox aria-label=\"Enable Package\" ng-model=\"item.isEnabled\" ng-change=\"packageFinder.toggleLib(item)\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
 	jade_debug.shift();
 	buf.push("</md-checkbox>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 50, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 68, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<p>");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 50, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 68, jade_debug[0].filename ));
 	buf.push("{{ item.name }}");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 51, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 69, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<small ng-if=\"item.alias &amp;&amp; item.name !== item.alias\" class=\"subhead\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 51, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 69, jade_debug[0].filename ));
 	buf.push("as ({{ item.alias }})");
 	jade_debug.shift();
 	jade_debug.shift();
 	buf.push("</small>");
 	jade_debug.shift();
-	jade_debug.unshift(new jade.DebugItem( 52, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	jade_debug.unshift(new jade.DebugItem( 70, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
 	buf.push("<small class=\"subhead\">");
 	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
-	jade_debug.unshift(new jade.DebugItem( 52, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 70, jade_debug[0].filename ));
 	buf.push("{{ item.path }}");
 	jade_debug.shift();
 	jade_debug.shift();
@@ -78382,14 +84005,32 @@
 	jade_debug.shift();
 	buf.push("</md-content>");
 	jade_debug.shift();
+	jade_debug.unshift(new jade.DebugItem( 74, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<!-- @todo: try new routers-->");
+	jade_debug.shift();
+	jade_debug.unshift(new jade.DebugItem( 74, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<md-content ng-class=\"{ hidden: !packageFinder.docsOpen }\" class=\"docs-window\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.unshift(new jade.DebugItem( 77, "/home/dante/Downloads/repos/jslip/src/packageFinder/packageFinder.tpl.jade" ));
+	buf.push("<iframe src=\"https://devdocs.io/\" layout-fill class=\"shrink-25\">");
+	jade_debug.unshift(new jade.DebugItem( undefined, jade_debug[0].filename ));
+	jade_debug.shift();
+	buf.push("</iframe>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-content>");
+	jade_debug.shift();
+	jade_debug.shift();
+	buf.push("</md-content>");
+	jade_debug.shift();
 	jade_debug.shift();;return buf.join("");
 	} catch (err) {
-	  jade.rethrow(err, jade_debug[0].filename, jade_debug[0].lineno, "md-content(layout=\"column\").package-finder\n\tmd-toolbar\n\t\t.md-toolbar-tools\n\t\t\th3 JS Library Playground\n\tmd-content(layout=\"column\", layout-margin)\n\t\t.add-package\n\t\t\th4 Add Package\n\t\t\t\tsmall.subhead\n\t\t\t\t\t| i like\n\t\t\t\t\t|  \n\t\t\t\t\ta(href=\"https://rawgit.com/\", target=\"_blank\") rawgit\n\t\t\t\t\t|  \n\t\t\t\t\t| to host libs\n\t\t\tmd-input-container.md-block\n\t\t\t\tlabel url to library\n\t\t\t\tinput(\n\t\t\t\t\tname=\"new.path\",\n\t\t\t\t\tng-change=\"packageFinder.updatePath()\",\n\t\t\t\t\tng-model=\"packageFinder.new.path\",\n\t\t\t\t\trequired\n\t\t\t\t)\n\t\t\tdiv(layout=\"row\")\n\t\t\t\tmd-input-container.md-block\n\t\t\t\t\tlabel name\n\t\t\t\t\tinput(\n\t\t\t\t\t\tname=\"new.name\",\n\t\t\t\t\t\tng-change=\"packageFinder.updateName()\",\n\t\t\t\t\t\tng-model=\"packageFinder.new.name\",\n\t\t\t\t\t\trequired\n\t\t\t\t\t\t)\n\t\t\t\tmd-input-container.md-block\n\t\t\t\t\tlabel alias\n\t\t\t\t\tinput(\n\t\t\t\t\t\tname=\"new.alias\",\n\t\t\t\t\t\tng-model=\"packageFinder.new.alias\"\n\t\t\t\t\t)\n\t\t\t\tdiv\n\t\t\t\t\tmd-button(ng-click=\"packageFinder.addLib()\").md-raised Add\n\t\t.package-list\n\t\t\th4 Packages\n\t\t\tdiv(\n\t\t\t\tlayout,\n\t\t\t\tng-repeat=\"item in packageFinder.packages\"\n\t\t\t)\n\t\t\t\tmd-checkbox(\n\t\t\t\t\taria-label=\"Enable Package\",\n\t\t\t\t\tng-model=\"item.isEnabled\",\n\t\t\t\t\tng-change=\"packageFinder.toggleLib(item)\"\n\t\t\t\t)\n\t\t\t\tp {{ item.name }}\n\t\t\t\t\tsmall(ng-if=\"item.alias && item.name !== item.alias\").subhead as ({{ item.alias }})\n\t\t\t\t\tsmall.subhead {{ item.path }}\n");
+	  jade.rethrow(err, jade_debug[0].filename, jade_debug[0].lineno, "md-content(layout, layout-fill)\n\tmd-content(layout=\"column\").package-finder.flex\n\t\tmd-toolbar\n\t\t\t.md-toolbar-tools\n\t\t\t\th3 JS Library Playground\n\t\t\t\tspan.flex\n\t\t\t\tmd-button(ng-click=\"packageFinder.toggleDocs()\").md-icon-button\n\t\t\t\t\tmd-icon ?\n\t\tmd-content(layout=\"column\", layout-margin)\n\t\t\t.add-package\n\t\t\t\th4 Add Package\n\t\t\t\t\tsmall.subhead\n\t\t\t\t\t\t| i like\n\t\t\t\t\t\t|  \n\t\t\t\t\t\ta(href=\"https://rawgit.com/\", target=\"_blank\") rawgit\n\t\t\t\t\t\t|  \n\t\t\t\t\t\t| to host libs\n\t\t\t\t\n\t\t\t\t.find-package\n\t\t\t\t\tmd-autocomplete(\n\t\t\t\t\t\tmd-selected-item=\"packageFinder.selectedPackage\",\n\t\t\t\t\t\tmd-search-text=\"packageFinder.searchText\",\n\t\t\t\t\t\tmd-items=\"item in packageFinder.search(packageFinder.searchText)\",\n\t\t\t\t\t\tmd-selected-item-change=\"packageFinder.pickPackage(item)\",\n\t\t\t\t\t\tmd-item-text=\"item.name\",\n\t\t\t\t\t\tmd-floating-label=\"Search for cdnjs packages...\"\n\t\t\t\t\t)\n\t\t\t\t\t\tmd-item-template\n\t\t\t\t\t\t\tspan(ng-bind-html=\"item._highlightResult.name.value\").package\n\t\t\t\t\t\tmd-not-found\n\t\t\t\t\t\t\tspan No results found\n\t\t\t\tdiv(layout=\"row\")\n\t\t\t\t\tmd-input-container.md-block\n\t\t\t\t\t\tlabel url to library\n\t\t\t\t\t\tinput(\n\t\t\t\t\t\t\tname=\"new.path\",\n\t\t\t\t\t\t\tng-change=\"packageFinder.updatePath()\",\n\t\t\t\t\t\t\tng-model=\"packageFinder.new.path\",\n\t\t\t\t\t\t\trequired\n\t\t\t\t\t\t)\n\t\t\t\t\tmd-input-container.md-block\n\t\t\t\t\t\tlabel name\n\t\t\t\t\t\tinput(\n\t\t\t\t\t\t\tname=\"new.name\",\n\t\t\t\t\t\t\tng-change=\"packageFinder.updateName()\",\n\t\t\t\t\t\t\tng-model=\"packageFinder.new.name\",\n\t\t\t\t\t\t\trequired\n\t\t\t\t\t\t\t)\n\t\t\t\t\tmd-input-container.md-block.flex-15\n\t\t\t\t\t\tlabel alias\n\t\t\t\t\t\tinput(\n\t\t\t\t\t\t\tname=\"new.alias\",\n\t\t\t\t\t\t\tng-model=\"packageFinder.new.alias\"\n\t\t\t\t\t\t)\n\t\t\t\t\tdiv\n\t\t\t\t\t\tmd-button(ng-click=\"packageFinder.addLib()\").md-raised Add\n\t\t\t.package-list\n\t\t\t\th4 Packages\n\t\t\t\tdiv(\n\t\t\t\t\tlayout,\n\t\t\t\t\tng-repeat=\"item in packageFinder.packages\"\n\t\t\t\t)\n\t\t\t\t\tmd-checkbox(\n\t\t\t\t\t\taria-label=\"Enable Package\",\n\t\t\t\t\t\tng-model=\"item.isEnabled\",\n\t\t\t\t\t\tng-change=\"packageFinder.toggleLib(item)\"\n\t\t\t\t\t)\n\t\t\t\t\tp {{ item.name }}\n\t\t\t\t\t\tsmall(ng-if=\"item.alias && item.name !== item.alias\").subhead as ({{ item.alias }})\n\t\t\t\t\t\tsmall.subhead {{ item.path }}\n\n\n\t// @todo: try new routers\n\tmd-content(\n\t\tng-class=\"{ hidden: !packageFinder.docsOpen }\"\n\t).docs-window\n\t\tiframe(\n\t\t\tsrc=\"https://devdocs.io/\",\n\t\t\tlayout-fill\n\t\t).shrink-25\n");
 	}
 	}
 
 /***/ },
-/* 42 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -78609,7 +84250,7 @@
 	    throw err;
 	  }
 	  try {
-	    str = str || __webpack_require__(43).readFileSync(filename, 'utf8')
+	    str = str || __webpack_require__(89).readFileSync(filename, 'utf8')
 	  } catch (ex) {
 	    rethrow(err, null, lineno)
 	  }
@@ -78641,7 +84282,7 @@
 
 
 /***/ },
-/* 43 */
+/* 89 */
 /***/ function(module, exports) {
 
 	/* (ignored) */
