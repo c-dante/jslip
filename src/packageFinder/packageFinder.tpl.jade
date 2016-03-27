@@ -1,66 +1,80 @@
-md-content(layout="column").package-finder
-	md-toolbar
-		.md-toolbar-tools
-			h3 JS Library Playground
-	md-content(layout="column", layout-margin)
-		.add-package
-			h4 Add Package
-				small.subhead
-					| i like
-					|  
-					a(href="https://rawgit.com/", target="_blank") rawgit
-					|  
-					| to host libs
-			
-			.find-package
-				md-autocomplete(
-					md-selected-item="packageFinder.selectedPackage",
-					md-search-text="packageFinder.searchText",
-					md-items="item in packageFinder.search(packageFinder.searchText)",
-					md-selected-item-change="packageFinder.pickPackage(item)",
-					md-item-text="item.name",
-					md-floating-label="Search for cdnjs packages..."
-				)
-					md-item-template
-						span(ng-bind-html="item._highlightResult.name.value").package
-					md-not-found
-						span No results found
-			div(layout="row")
-				md-input-container.md-block
-					label url to library
-					input(
-						name="new.path",
-						ng-change="packageFinder.updatePath()",
-						ng-model="packageFinder.new.path",
-						required
+md-content(layout, layout-fill)
+	md-content(layout="column").package-finder.flex
+		md-toolbar
+			.md-toolbar-tools
+				h3 JS Library Playground
+				span.flex
+				md-button(ng-click="packageFinder.toggleDocs()").md-icon-button
+					md-icon ?
+		md-content(layout="column", layout-margin)
+			.add-package
+				h4 Add Package
+					small.subhead
+						| i like
+						|  
+						a(href="https://rawgit.com/", target="_blank") rawgit
+						|  
+						| to host libs
+				
+				.find-package
+					md-autocomplete(
+						md-selected-item="packageFinder.selectedPackage",
+						md-search-text="packageFinder.searchText",
+						md-items="item in packageFinder.search(packageFinder.searchText)",
+						md-selected-item-change="packageFinder.pickPackage(item)",
+						md-item-text="item.name",
+						md-floating-label="Search for cdnjs packages..."
 					)
-				md-input-container.md-block
-					label name
-					input(
-						name="new.name",
-						ng-change="packageFinder.updateName()",
-						ng-model="packageFinder.new.name",
-						required
+						md-item-template
+							span(ng-bind-html="item._highlightResult.name.value").package
+						md-not-found
+							span No results found
+				div(layout="row")
+					md-input-container.md-block
+						label url to library
+						input(
+							name="new.path",
+							ng-change="packageFinder.updatePath()",
+							ng-model="packageFinder.new.path",
+							required
 						)
-				md-input-container.md-block.flex-15
-					label alias
-					input(
-						name="new.alias",
-						ng-model="packageFinder.new.alias"
-					)
-				div
-					md-button(ng-click="packageFinder.addLib()").md-raised Add
-		.package-list
-			h4 Packages
-			div(
-				layout,
-				ng-repeat="item in packageFinder.packages"
-			)
-				md-checkbox(
-					aria-label="Enable Package",
-					ng-model="item.isEnabled",
-					ng-change="packageFinder.toggleLib(item)"
+					md-input-container.md-block
+						label name
+						input(
+							name="new.name",
+							ng-change="packageFinder.updateName()",
+							ng-model="packageFinder.new.name",
+							required
+							)
+					md-input-container.md-block.flex-15
+						label alias
+						input(
+							name="new.alias",
+							ng-model="packageFinder.new.alias"
+						)
+					div
+						md-button(ng-click="packageFinder.addLib()").md-raised Add
+			.package-list
+				h4 Packages
+				div(
+					layout,
+					ng-repeat="item in packageFinder.packages"
 				)
-				p {{ item.name }}
-					small(ng-if="item.alias && item.name !== item.alias").subhead as ({{ item.alias }})
-					small.subhead {{ item.path }}
+					md-checkbox(
+						aria-label="Enable Package",
+						ng-model="item.isEnabled",
+						ng-change="packageFinder.toggleLib(item)"
+					)
+					p {{ item.name }}
+						small(ng-if="item.alias && item.name !== item.alias").subhead as ({{ item.alias }})
+						small.subhead {{ item.path }}
+
+
+	// @todo: try new routers
+	md-content(
+		ng-class="{ hidden: !packageFinder.docsOpen }"
+	).docs-window
+		iframe(
+			src="https://devdocs.io/",
+			layout-fill
+		).shrink-25

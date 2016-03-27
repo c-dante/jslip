@@ -11,7 +11,7 @@ var mainState = require('./state');
 
 var jslip = angular.module('jslip', ['ngMaterial', 'ngRoute', 'ngSanitize']);
 
-jslip.controller('packageFinder', ['$scope', 'mainState', require('./packageFinder/ctrl')]);
+jslip.controller('packageFinder', ['$scope', 'mainState', '$mdSidenav', require('./packageFinder/ctrl')]);
 var packageFinderTpl = require('./packageFinder/packageFinder.tpl.jade');
 
 jslip.config(['$routeProvider', (routes) => {

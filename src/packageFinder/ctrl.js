@@ -13,8 +13,13 @@ var newPkg = () => {
 	};
 };
 
-var PackageFinder = function(scope, state){
+var PackageFinder = function(scope, state, mdSidenav){
 	this.state = state;
+	this.mdSidenav = mdSidenav;
+	this.scope = scope;
+
+	this.docsOpen = true;
+
 	this.new = newPkg();
 	this.shouldGen = true;
 
@@ -26,6 +31,10 @@ var PackageFinder = function(scope, state){
 	state.subscribe(() => update);
 	update();
 };
+
+PackageFinder.prototype.toggleDocs = function() {
+	this.docsOpen = !this.docsOpen;
+}
 
 var throttleSearch = _.throttle(search.autocomplete, 250);
 

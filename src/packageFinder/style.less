@@ -13,15 +13,50 @@
 	}
 
 	.package-list {
+		md-checkbox {
+			min-width: 30px
+		}
+
 		md-checkbox + p {
 			display: inline-block;
 			transform: translate(0, -0.35em);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+
 			.subhead {
 				text-overflow: ellipsis;
 			}
 		}
 	}
 }
+
+.docs-window {
+	height: 100%;
+	width: 40%;
+	overflow: hidden;
+
+	transition: width 500ms ease-out;
+
+	&.hidden {
+		width: 0.1px;
+	}
+}
+
+.shrink-25 {
+	width: 133%;
+	height: 133%;
+	transform-origin: top left;
+	transform: scale(0.75, 0.75);
+}
+
+.shrink-50 {
+	width: 200%;
+	height: 200%;
+	transform-origin: top left;
+	transform: scale(0.5, 0.5);
+}
+
 
 .package {
 	em {
