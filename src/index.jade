@@ -5,8 +5,9 @@ html(lang="en")
 		meta(name="viewport", content="width=device-width, initial-scale=1")
 		meta(name="description", content="Easy way to load a bunch of js libraries into the console for testing and play.")
 
+		link(rel="icon", type="image/ico", href="./favicon.ico")
+
 		title js lib playground
 
 		script(src="./main.bundle.js", type="text/javascript", async, defer)
-	body(data-ng-app="jslip", ng-cloak)
-		div(data-ng-view, layout-fill)
+	body(data-ng-app="jslip", ng-cloak, data-ng-view)
