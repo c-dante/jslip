@@ -1,5 +1,5 @@
-# jslip
-A JavaScript library playground
+# [jslip](c-dante.github.io/jslip)
+A JavaScript library playground.
 
 # build
 
