@@ -43,6 +43,8 @@ PackageFinder.prototype.search = function(name){
 };
 
 PackageFinder.prototype.pickPackage = function(pkg){
+	if (!pkg) return;
+
 	this.new.name = this.selectedPackage.name + ' ' + this.selectedPackage.version;
 	this.new.alias = this.selectedPackage.alias || this.selectedPackage.name;
 	this.new.path = this.selectedPackage.path;
@@ -68,6 +70,10 @@ PackageFinder.prototype.updatePath = function(){
 
 PackageFinder.prototype.toggleLib = function(lib) {
 	this.state.dispatch({ type: 'enabled' });
+};
+
+PackageFinder.prototype.removeLib = function(lib, index) {
+	this.state.dispatch({ type: 'removePackage', index });
 };
 
 PackageFinder.prototype.addLib = function() {

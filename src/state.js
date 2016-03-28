@@ -24,13 +24,17 @@ var packageList = (state = [], event) => {
 	{
 		case 'addPackageList':
 			state.push(...event.packages);
-			throttleSave(state);
 			break;
 		case 'addPackage':
 			state.push(pkg(event.pkg.name, event.pkg.path, event.pkg.alias, true));
-			throttleSave(state);
+			break;
+		case 'removePackage':
+			console.log('removing', event);
+			state.splice(event.index, 1);
 			break;
 	}
+	throttleSave(state);
+	console.log(state);
 	return state;
 };
 

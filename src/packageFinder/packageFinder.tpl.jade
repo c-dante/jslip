@@ -68,7 +68,7 @@ md-content(layout, layout-fill)
 					p.flex {{ item.name }}
 						small(ng-if="item.alias && item.name !== item.alias").subhead as ({{ item.alias }})
 						small.subhead {{ item.path }}
-					del(on-end="packageFinder.removeLib(item)")
+					del(on-end="packageFinder.removeLib(item, $index)")
 
 	// @todo: try new routers
 	md-content(

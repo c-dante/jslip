@@ -1,13 +1,21 @@
 'use strict';
 
+require('./style.less');
+
 const FRESH = 1;
 const WAIT = 1 << 1;
 const END = 1 << 2;
 
 var DelCtrl = function(scope) {
 	this.state = FRESH;
-	this.delay = this.delay || 500;
+	this.delay = this.delay || 2000;
 	this.delayTimeout;
+	Object.assign(this, { FRESH, WAIT, END });
+};
+
+DelCtrl.prototype.start = function() {
+	this.delayTimeout = setTimeout(() => this.end(), this.delay);
+	this.onStart({});
 };
 
 DelCtrl.prototype.cancel = function() {
@@ -19,8 +27,9 @@ DelCtrl.prototype.cancel = function() {
 };
 
 DelCtrl.prototype.end = function() {
-	console.log(this);
+	this.state = END;
 	this.delayTimeout = undefined;
+	this.onEnd({});
 };
 
 DelCtrl.prototype.clickX = function() {
@@ -28,8 +37,7 @@ DelCtrl.prototype.clickX = function() {
 	{
 		case FRESH:
 			this.state = WAIT;
-			this.onStart({});
-			this.delayTimeout = setTimeout(() => this.end(), this.delay);
+			this.start();
 			break;
 		case WAIT:
 			this.state = FRESH;
