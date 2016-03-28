@@ -65,10 +65,10 @@ md-content(layout, layout-fill)
 						ng-model="item.isEnabled",
 						ng-change="packageFinder.toggleLib(item)"
 					)
-					p {{ item.name }}
+					p.flex {{ item.name }}
 						small(ng-if="item.alias && item.name !== item.alias").subhead as ({{ item.alias }})
 						small.subhead {{ item.path }}
-
+					del(on-end="packageFinder.removeLib(item)")
 
 	// @todo: try new routers
 	md-content(
