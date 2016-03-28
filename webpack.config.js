@@ -28,8 +28,8 @@ module.exports = {
 	module: {
 		loaders: [
 			{ test: /\.js$/, loader: 'babel', exclude: /(node_modules|bower_components)/ },
-			{ test: /\.tpl\.jade$/, loaders: ['jade'], exclude: /(node_modules|bower_components)/ },
-			{ test: /[^\.][^t][^p][^l]\.jade$/, loaders: ['file?name=[name].html', 'jade-html'], exclude: /(node_modules|bower_components)/ },
+			{ test: /\.tpl\.(jade|pug)$/, loaders: ['jade'], exclude: /(node_modules|bower_components)/ },
+			{ test: /[^\.][^t][^p][^l]\.(jade|pug)$/, loaders: ['file?name=[name].html', 'jade-html'], exclude: /(node_modules|bower_components)/ },
 			{ test: /\.less$/, loaders: ['style', 'css', 'postcss', 'less'], exclude: /(node_modules|bower_components)/ }
 		]
 	},
