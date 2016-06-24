@@ -1,3 +1,6 @@
 .del(ng-class="{wait: delCtrl.state === delCtrl.WAIT, end: delCtrl.state === delCtrl.END}")
-	md-button(ng-click="delCtrl.clickX()", ng-class="{'md-warn': delCtrl.state === delCtrl.WAIT}").md-icon-button
-		md-icon x	
+	md-button(
+		ng-click="delCtrl.clickX()",
+		ng-class="{'md-warn': delCtrl.state === delCtrl.WAIT}"
+	).md-icon-button
+		md-icon {{ delCtrl.state === delCtrl.WAIT ? "undo" : "close" }}

@@ -19,6 +19,7 @@ jslip.controller('packageFinder', ['$scope', 'mainState', '$mdSidenav', require(
 //  Directives
 jslip.directive('del', [require('./widgets/del/directive')]);
 
+jslip.directive('cm', [require('./widgets/cm/directive')])
 
 // Routes
 jslip.config(['$routeProvider', (routes) => {

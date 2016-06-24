@@ -15,6 +15,7 @@ var pkg = (name, path, alias = undefined, isUser = false) => {
 	};
 };
 
+var loaded = false;
 var throttleSave = _.throttle((state) => {
 	window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }, 500);
@@ -33,8 +34,11 @@ var packageList = (state = [], event) => {
 			state.splice(event.index, 1);
 			break;
 	}
-	throttleSave(state);
-	console.log(state);
+
+	if (loaded) {
+		throttleSave(state);
+	}
+	
 	return state;
 };
 
@@ -46,6 +50,27 @@ var state = Redux.createStore(Redux.combineReducers({
 	packageList: []
 });
 
+
+// Storage state
+var saveState = window.localStorage.getItem(STORAGE_KEY);
+if (!saveState)
+{
+	// Preload some basics
+	Promise.all(['lodash', 'moment', 'd3'].map(search.autocomplete))
+	.then(
+		(x) => state.dispatch({
+			type: 'addPackageList',
+			packages: x.map(_.first).map((x) => pkg(x.name + '(' + x.version + ')', x.path, x.alias)) })
+	);
+
+	state.dispatch({ type: 'addPackage', pkg: pkg('flyd (master)', 'https://rawgit.com/paldepind/flyd/master/flyd.js', 'flyd')})
+	loaded = true;
+}
+else
+{
+	loaded = true;
+	state.dispatch({ type: 'addPackageList', packages: JSON.parse(saveState) })
+}
 
 
 
@@ -77,26 +102,6 @@ state.subscribe(() => {
 		}
 	});
 });
-
-
-
-// Storage state
-var saveState = window.localStorage.getItem(STORAGE_KEY);
-if (!saveState)
-{
-	Promise.all(['lodash', 'moment'].map(search.autocomplete))
-	.then(
-		(x) => state.dispatch({
-			type: 'addPackageList',
-			packages: x.map(_.first).map((x) => pkg(x.name + '(' + x.version + ')', x.path, x.alias)) })
-	);
-
-	state.dispatch({ type: 'addPackage', pkg: pkg('flyd (master)', 'https://rawgit.com/paldepind/flyd/master/flyd.js', 'flyd')})
-}
-else
-{
-	state.dispatch({ type: 'addPackageList', packages: JSON.parse(saveState) })
-}
 
 
 module.exports = state;

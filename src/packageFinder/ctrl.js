@@ -18,7 +18,9 @@ var PackageFinder = function(scope, state, mdSidenav){
 	this.mdSidenav = mdSidenav;
 	this.scope = scope;
 
-	this.docsOpen = true;
+	this.docsOpen = false;
+
+	this.log = [];
 
 	this.new = newPkg();
 	this.shouldGen = true;
@@ -34,6 +36,9 @@ var PackageFinder = function(scope, state, mdSidenav){
 
 PackageFinder.prototype.toggleDocs = function() {
 	this.docsOpen = !this.docsOpen;
+	if (!this.firstDocsOpen && this.docsOpen) {
+		this.firstDocsOpen = true;
+	}
 }
 
 var throttleSearch = _.throttle(search.autocomplete, 250);
@@ -83,6 +88,11 @@ PackageFinder.prototype.addLib = function() {
 		this.new = newPkg();
 		this.shouldGen = true;
 	}
+};
+
+
+PackageFinder.prototype.cmInit = function(cm) {
+	console.log('Oh hey cm', cm);
 };
 
 module.exports = PackageFinder;
