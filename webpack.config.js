@@ -19,7 +19,8 @@ module.exports = {
 	resolve: {
 		alias: {
 			fs: 'html5-fs',
-			systemjs: 'systemjs/dist/system'
+			systemjs: 'systemjs/dist/system',
+			// 'babel-core': 'babel-core/lib/api/browser'
 		}
 	},
 	resolveLoader: {
@@ -28,7 +29,7 @@ module.exports = {
 	module: {
 		loaders: [
 			{ test: /\.js$/, loader: 'babel', exclude: /(node_modules|bower_components)/ },
-			{ test: /\.tpl\.(jade|pug)$/, loaders: ['jade'], exclude: /(node_modules|bower_components)/ },
+			{ test: /tpl\.(jade|pug)$/, loaders: ['jade'], exclude: /(node_modules|bower_components)/ },
 			{ test: /[^\.][^t][^p][^l]\.(jade|pug)$/, loaders: ['file?name=[name].html', 'jade-html'], exclude: /(node_modules|bower_components)/ },
 			{ test: /\.less$/, loaders: ['style', 'css', 'postcss', 'less'], exclude: /(node_modules|bower_components)/ }
 		]

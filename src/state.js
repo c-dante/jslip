@@ -44,11 +44,13 @@ var packageList = (state = [], event) => {
 
 
 
-var state = Redux.createStore(Redux.combineReducers({
+const state = Redux.createStore(Redux.combineReducers({
 	packageList
 }), {
 	packageList: []
 });
+
+export default state;
 
 
 // Storage state
@@ -102,6 +104,3 @@ state.subscribe(() => {
 		}
 	});
 });
-
-
-module.exports = state;

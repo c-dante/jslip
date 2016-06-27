@@ -1,0 +1,20 @@
+md-content(layout="column").flex
+	md-toolbar
+			.md-toolbar-tools
+				h3 JSLIP
+				md-menu
+					md-button(
+						ng-click="$mdOpenMenu($event)"
+						class="md-icon-button"
+						aria-label="Open sample menu"
+					)
+						| buffers
+					md-menu-content
+						md-menu-item
+							span.flex
+							md-button
+								| Buffers
+								md-icon list
+	md-content
+		.code
+			cm(on-init="$ctrl.registerEditor(cm)")

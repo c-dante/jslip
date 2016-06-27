@@ -11,6 +11,8 @@ html(lang="en")
 		title js lib playground
 
 		script(src="./main.bundle.js", type="text/javascript", async, defer)
-	body(data-ng-app="jslip", ng-cloak).absolute-fill
+
+		script(src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.10.3/babel.min.js", type="text/javascript", async, defer)
+	body(ng-cloak).absolute-fill
 		#dom
 		div(data-ng-view).fill
